@@ -2219,7 +2219,7 @@ function onBeat(gb, tAudio){
     if(i===RESULT_B-1){
       G.log.push({id:G.poseId, ok:G.result==='ok'});
       G.plays++;
-      if(G.plays >= G.total){ G.running=false; setTimeout(showSummary, 700); }
+      if(G.plays >= G.total){ G.running=false; laterSummary(700); }
     }
   }
 }
@@ -2369,7 +2369,7 @@ function touchFinish(ok){
     G.mood='oops'; speak(pick(CHEER), 1.0, 1.2);
   }
   G.pop=1.2;
-  if(G.plays >= SET.rounds){ G.running=false; setTimeout(showSummary, 900); }
+  if(G.plays >= SET.rounds){ G.running=false; laterSummary(900); }
   else T.nextAt = now() + 1.4;                   // すこし 間 を おいて つぎ へ
 }
 
@@ -2517,7 +2517,7 @@ function catchResolve(item, ok){
     G.combo=0; SFX.pop(t); sweep(300,140,t,0.22,'sine',0.14);
     G.mood='oops';
   }
-  if(C.done >= SET.rounds){ G.running=false; setTimeout(showSummary, 1000); }
+  if(C.done >= SET.rounds){ G.running=false; laterSummary(1000); }
 }
 
 function catchTick(dt){
@@ -2638,11 +2638,11 @@ const isX = m => XMODES.indexOf(m||SET.mode) >= 0;
    s…シャボン：sR＝おおきさ(からだ比)、sRise＝がめん を のぼりきる びょう、sMax＝どうじ の かず、sGap＝でる かんかく、sBand＝でる よこはば
    m…もぐら：mUp＝かお を だして いる びょう、mMax＝どうじ の かず、mGap＝でる かんかく、mReach＝あな の とおさ、mGold＝きんいろ の わりあい */
 const XLV = {
-  easy  :{ aR:0.38, aSpd:0.22, aMax:1, aGap:1.4, aLife:14, aBoss:0,    aBand:1.0, kR:0.42, kGoal:0.55, cT:0.14, cHold:0.6, cSec:16, yFull:7,  yShift:0.22, yHold:0.35, ySec:14, pThr:0.16, pNeed:1.5, pWin:7, fTop:0.55, fRate:0.75, fFast:1.9, fSec:30,
+  easy  :{ aR:0.38, aSpd:0.22, aMax:1, aGap:1.4, aLife:14, aBoss:0,    aBand:1.0, kR:0.42, kGoal:0.55, cT:0.07, cHold:0.5, cSec:20, cAs:0.85, yFull:7,  yShift:0.22, yHold:0.35, ySec:14, pThr:0.16, pNeed:1.5, pWin:7, fTop:0.55, fRate:0.75, fFast:1.9, fSec:30,
            sR:0.42, sRise:9.0, sMax:2, sGap:2.4, sBand:1.0,  mUp:6.0, mMax:1, mGap:1.3, mReach:0.82, mGold:0.10 },
-  normal:{ aR:0.32, aSpd:0.40, aMax:2, aGap:1.4, aLife:11, aBoss:0.15, aBand:1.25, kR:0.34, kGoal:0.70, cT:0.22, cHold:1.0, cSec:13, yFull:11, yShift:0.32, yHold:0.50, ySec:10, pThr:0.10, pNeed:2.5, pWin:7, fTop:0.72, fRate:0.60, fFast:1.3, fSec:24,
+  normal:{ aR:0.32, aSpd:0.40, aMax:2, aGap:1.4, aLife:11, aBoss:0.15, aBand:1.25, kR:0.34, kGoal:0.70, cT:0.11, cHold:0.8, cSec:16, cAs:0.6, yFull:11, yShift:0.32, yHold:0.50, ySec:10, pThr:0.10, pNeed:2.5, pWin:7, fTop:0.72, fRate:0.60, fFast:1.3, fSec:24,
            sR:0.32, sRise:6.5, sMax:3, sGap:1.7, sBand:1.25, mUp:4.0, mMax:1, mGap:1.0, mReach:1.00, mGold:0.15 },
-  hard  :{ aR:0.27, aSpd:0.65, aMax:3, aGap:1.1, aLife:9,  aBoss:0.30, aBand:1.45, kR:0.26, kGoal:0.85, cT:0.32, cHold:1.4, cSec:10, yFull:16, yShift:0.45, yHold:0.80, ySec:8,  pThr:0.08, pNeed:3.5, pWin:8, fTop:0.90, fRate:0.45, fFast:0.9, fSec:20,
+  hard  :{ aR:0.27, aSpd:0.65, aMax:3, aGap:1.1, aLife:9,  aBoss:0.30, aBand:1.45, kR:0.26, kGoal:0.85, cT:0.17, cHold:1.2, cSec:12, cAs:0.3, yFull:16, yShift:0.45, yHold:0.80, ySec:8,  pThr:0.08, pNeed:3.5, pWin:8, fTop:0.90, fRate:0.45, fFast:0.9, fSec:20,
            sR:0.24, sRise:4.6, sMax:4, sGap:1.1, sBand:1.5,  mUp:2.6, mMax:2, mGap:0.7, mReach:1.15, mGold:0.20 }
 };
 const xlv = ()=> XLV[SET.level] || XLV.normal;
@@ -2760,7 +2760,7 @@ function xFinish(id, ok){
     G.mood='oops'; speak(pick(CHEER), 1.0, 1.2);
   }
   G.pop=1.2;
-  if(G.plays >= SET.rounds){ G.running=false; setTimeout(showSummary, 1100); return true; }
+  if(G.plays >= SET.rounds){ G.running=false; laterSummary(1100); return true; }
   return false;
 }
 // --- きょうつう：1こ ずつ かぞえる あそび（シャボンだま・もぐら） ---
@@ -2771,7 +2771,7 @@ function xCount(id, ok, done, bonus){
   if(ok){ G.stars += bonus?2:1; G.combo++; elStar.textContent=G.stars; G.mood='happy';
           if(G.combo>0 && G.combo%5===0){ bigText(pick(PRAISE), '#fff3a8'); if(ac) SFX.great(ac.currentTime); } }
   else { G.combo=0; }
-  if(done >= SET.rounds){ G.running=false; setTimeout(showSummary, 1200); }
+  if(done >= SET.rounds){ G.running=false; laterSummary(1200); }
 }
 // --- きょうつう：その ばしょ で はじける きらきら ---
 function xSpark(x,y,n,cols,sp){
@@ -4105,7 +4105,7 @@ function choHead(){
 function choCenter(){ return { x:CW/2, y:CH*0.56 }; }
 function choSpotXY(k){ const c=choCenter(), d=CHO_SPOTS[k]; return { x:c.x+d.x*CW*0.32, y:c.y+d.y*CH*0.34 }; }
 function choNext(){
-  const C=X.c, keys = SET.level==='easy' ? ['L','R'] : ['L','R','U'];
+  const C=X.c, keys = SET.level==='hard' ? ['L','R','U'] : ['L','R'];
   const ks=keys.filter(k=>k!==C.lastK); const k=pick(ks); C.lastK=k;
   C.target=k; C.hold=0; C.t0=XT; C.stage='go'; C.hintT=0;
   elPoseName.textContent=CHO_SPOTS[k].name+' の おはな';
@@ -4143,17 +4143,24 @@ function choTick(dt){
       if(C.stage!=='go' && Math.abs(dx)<0.3 && Math.abs(dy)<0.3){ const a=1-Math.exp(-dt/3); C.base.x=lerp(C.base.x,h.x,a); C.base.y=lerp(C.base.y,h.y,a); }
     }
   }else if(C.ptr){ tx=C.ptr.x; ty=C.ptr.y; }
+  // おてつだい：ただしい ほう へ すこし でも うごいたら、ちょうちょ が おはな へ すいよせられる
+  if(C.stage==='go' && G.judgeOn){
+    const p=choSpotXY(C.target), vx=p.x-c.x, vy=p.y-c.y, d2=vx*vx+vy*vy||1;
+    const k=((tx-c.x)*vx+(ty-c.y)*vy)/d2;                 // 0＝まんなか、1＝おはな
+    const pull=clamp((k-0.25)/0.45,0,1)*(L.cAs||0.5);
+    tx=lerp(tx,p.x,pull); ty=lerp(ty,p.y,pull);
+  }
   const a=1-Math.exp(-dt*6); C.bx=lerp(C.bx,tx,a); C.by=lerp(C.by,ty,a);
   C.dir = lerp(C.dir||0, clamp((tx-C.bx)/60,-1,1), 1-Math.exp(-dt*5));
   // ③ はな の うえ で とまる
   if(C.stage==='go'){
-    const p=choSpotXY(C.target), r=Math.min(CW,CH)*0.12*judgeHit();
+    const p=choSpotXY(C.target), r=Math.min(CW,CH)*0.16*judgeHit();
     const near=Math.hypot(C.bx-p.x,C.by-p.y) < r;
-    C.hold = near ? C.hold+dt : Math.max(0,C.hold-dt*1.5);
+    C.hold = near ? C.hold+dt : Math.max(0,C.hold-dt*0.5);
     if(near && ac && XT>=(C.tickAt||0)){ C.tickAt=XT+0.3; tone(1046.5+C.hold*600,ac.currentTime,0.08,'sine',0.06); }
     if(C.hold>=L.cHold) choDone(true);
     else if(XT-C.t0 > L.cSec) choDone(false);
-    else if(XT-C.t0 > L.cSec*0.5 && !C.hintT){ C.hintT=1; bigText('かお を '+CHO_SPOTS[C.target].name+' へ','#fff'); speak('かおを '+CHO_SPOTS[C.target].name+' へ'); }
+    else if(XT-C.t0 > L.cSec*0.35 && !C.hintT){ C.hintT=1; bigText('かお を '+CHO_SPOTS[C.target].name+' へ','#fff'); speak('かおを '+CHO_SPOTS[C.target].name+' へ'); }
   }else if(C.stage==='bloom' || C.stage==='gap'){
     if(XT-C.t1 > 1.6){ C.stage=null; C.nextAt=XT+0.4; }
   }
@@ -4191,7 +4198,7 @@ function choDraw(){
   // そら と くさ（カメラ の えいぞう は うすく みえる）
   ctx.save(); ctx.fillStyle='rgba(234,247,255,.40)'; ctx.fillRect(0,0,CW,CH);
   ctx.fillStyle='rgba(143,209,122,.92)'; ctx.beginPath(); ctx.moveTo(0,CH*0.9); ctx.quadraticCurveTo(CW*0.5,CH*0.82,CW,CH*0.9); ctx.lineTo(CW,CH); ctx.lineTo(0,CH); ctx.fill(); ctx.restore();
-  const keys = SET.level==='easy' ? ['L','R'] : ['L','R','U'];
+  const keys = SET.level==='hard' ? ['L','R','U'] : ['L','R'];
   for(const k of keys){ const p=choSpotXY(k); choFlower(p.x,p.y,m*0.085,CHO_COL[k], C.stage==='go'&&C.target===k, C.bloom[k]||0); }
   if(C.stage==='go'){
     const p=choSpotXY(C.target);
@@ -5421,6 +5428,7 @@ function beginGame(withCamera){
   introTimers.push(setTimeout(go, 3000));
 }
 async function beginGameNow(withCamera, noSay){
+  gameSid++;
   if(withCamera!==undefined) lastWithCamera = !!withCamera;
   $('#startScreen').classList.add('hidden');
   $('#resultScreen').classList.add('hidden');
@@ -5580,6 +5588,9 @@ const VFRUIT_KEYS = ['apple','orange','banana','grape','berry','peach','cherry',
 const VFRUIT_IMG = {};
 VFRUIT_KEYS.concat(['rock']).forEach(k=>{ const im=new Image(); im.src=svgURL(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256">${VFDEF}${VFRUIT[k]()}</svg>`); VFRUIT_IMG[k]=im; });
 
+/* ---- おしまい の がめん は すこし まって から（その あいだ に「もどる」や つぎ の あそび を はじめたら ださない） ---- */
+let gameSid=0;
+function laterSummary(ms){ const id=gameSid; setTimeout(()=>{ if(id===gameSid && !G.running) showSummary(); }, ms); }
 /* ---- おしまい：なんかい できたか を みせる ---- */
 function showSummary(){
   G.running=false; clearPause();
@@ -5638,7 +5649,7 @@ function showSummary(){
 
 /* ---- とちゅう で やめて、さいしょ の がめん に すぐ もどる（けっか は ださない） ---- */
 function goHome(){
-  introCancel();
+  introCancel(); gameSid++;
   G.running=false; clearPause(); bgmCut();
   if(SET.mode==='reach'){ SET.mode=REACH_BACK; saveSet(); paintLevels(); }
   setKeep(false);
