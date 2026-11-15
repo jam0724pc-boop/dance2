@@ -2818,7 +2818,7 @@ function drawFruits(){
    ・ゆらゆら ふね   ：からだ を さゆう に かたむけて、ふね を ☆ まで はこぶ
    ・ピタッと ストップ：おんがく の あいだ は うごき、とまったら ピタッ と うごかない
    ・ふうせん のびのび：てを ゆっくり あげると ふうせん が ふくらみ、おろすと とんでいく
-   ・シャボンだま わり：した から あがって くる シャボンだま を てで パチン
+   ・シャボンだま わり：うえ・した・ひだり・みぎ から とんで くる シャボンだま を てで パチン
    ・もぐら たたき   ：からだ の まわり の あな から でる もぐら を てで タッチ
    どれも 上半身（かた・ひじ・てくび・かお）だけ で はんてい する ので、
    すわった まま（くるまいす）でも たった まま でも あそべる。
@@ -3424,9 +3424,23 @@ function shabonSpawn(){
   const S=X.s, L=xlv(), m=Math.min(CW,CH);
   const u = XB.ok ? XB.u : m*0.2, cx = XB.ok ? XB.sh.x : CW/2;
   const r = clamp(u*L.sR, m*0.065, m*0.16);
-  const half = Math.min(u*L.sBand, CW*0.44);
-  const x = reachX(()=>clamp(cx + rnd(-half,half), r*1.3, CW-r*1.3));
-  S.items.push({ x0:x, x, y:CH+r*1.2, r, vy:(CH+r*2.4)/L.sRise*rnd(0.9,1.1), ph:rnd(0,6.28), amp:u*rnd(0.06,0.14),
+  const half = Math.min(u*L.sBand, CW*0.44), cy = XB.ok ? XB.sh.y : CH*0.5;
+  // とんで くる ほう：した・うえ・ひだり・みぎ（おなじ ほう が つづかない ように）
+  const sides=['B','T','L','R'].filter(k=>k!==S.lastSide); const side=pick(sides); S.lastSide=side;
+  // とおる ところ（こども の まわり。とどく ところ を はかって いれば その なか）
+  let tx=CW/2, ty=CH/2;
+  for(let i=0;i<30;i++){ tx=clamp(cx+rnd(-half,half), r*1.3, CW-r*1.3); ty=clamp(cy+rnd(-u*0.9,u*0.6), CH*0.16+r, CH*0.9-r); if(!reachOn() || reachIn(tx,ty)) break; }
+  let sx, sy, ex, ey;
+  if(side==='B'){ sx=clamp(tx+rnd(-u*0.4,u*0.4),r,CW-r); sy=CH+r*1.2; }
+  else if(side==='T'){ sx=clamp(tx+rnd(-u*0.4,u*0.4),r,CW-r); sy=-r*1.2; }
+  else if(side==='L'){ sx=-r*1.2; sy=clamp(ty+rnd(-u*0.3,u*0.3),r,CH-r); }
+  else { sx=CW+r*1.2; sy=clamp(ty+rnd(-u*0.3,u*0.3),r,CH-r); }
+  // とおる ところ を とおって、はんたい の はし へ
+  const dx=tx-sx, dy=ty-sy, d=Math.hypot(dx,dy)||1, ux=dx/d, uy=dy/d;
+  const kx = ux>0 ? (CW+r*1.3-sx)/ux : ux<0 ? (-r*1.3-sx)/ux : 1e9, ky = uy>0 ? (CH+r*1.3-sy)/uy : uy<0 ? (-r*1.3-sy)/uy : 1e9, len=Math.min(kx,ky);
+  ex=sx+ux*len; ey=sy+uy*len;
+  const dist=Math.hypot(ex-sx,ey-sy), dur=L.sRise*(dist/(CH+r*2.4))*0.9*rnd(0.9,1.1);
+  S.items.push({ sx, sy, ex, ey, ux, uy, t:0, dur:Math.max(2.5,dur), x:sx, y:sy, r, ph:rnd(0,6.28), amp:u*rnd(0.05,0.11), side,
                  hue:(S.hue=(S.hue+47)%360), gone:false, got:false, pop:0, born:XT });
   S.spawned++;
 }
@@ -3447,14 +3461,14 @@ function shabonTick(dt){
   const pr = palmR();
   for(const it of S.items){
     if(it.gone){ it.pop = Math.max(0, it.pop - dt*3.2); continue; }
-    it.y -= it.vy*dt;
-    it.x = it.x0 + Math.sin(XT*1.3 + it.ph)*it.amp;
+    it.t += dt; const k=it.t/it.dur, w=Math.sin(XT*1.3 + it.ph)*it.amp;
+    it.x = lerp(it.sx,it.ex,k) - it.uy*w; it.y = lerp(it.sy,it.ey,k) + it.ux*w;   // すすむ ほう と よこ に ふわふわ
     if(G.judgeOn && XB.ok){
       for(const h of XB.hands){
         if(Math.hypot(h.palm.x-it.x, h.palm.y-it.y) < it.r + pr){ shabonResolve(it, true); break; }
       }
     }
-    if(!it.gone && it.y < -it.r){ shabonResolve(it, false); it.pop=0; }   // そら へ きえる（しっぱい の おと は ださない）
+    if(!it.gone && it.t > it.dur){ shabonResolve(it, false); it.pop=0; }   // むこう へ きえる（しっぱい の おと は ださない）
   }
   if(S.items.length>30) S.items = S.items.filter(i=>!i.gone || i.pop>0);
 }
@@ -6902,7 +6916,7 @@ async function beginGameNow(withCamera, noSay){
     const XM={yura:['⛵','ゆらゆら ふね','からだ を かたむけて、ふね を ☆ まで はこぼう','☆ を ゆびで タッチ しても できるよ'],
               pita:['🚦','ピタッと ストップ','おんがく で うごいて、とまったら ピタッ！','ピタッ の とき、がめん を タッチ すると できた に なるよ'],
               fuse:['🎈','ふうせん のびのび','ゆっくり てを あげて、ふうせん を ふくらませよう','がめん を タッチ すると ふうせん が とぶよ'],
-              shabon:['🫧','シャボンだま わり','あがって くる シャボンだま を、てで さわって パチン！','シャボンだま を ゆびで タッチ して わろう'],
+              shabon:['🫧','シャボンだま わり','とんで くる シャボンだま を、てで さわって パチン！','シャボンだま を ゆびで タッチ して わろう'],
               mogura:['🐹','もぐら たたき','かお を だした もぐら を、てで タッチ！','もぐら を ゆびで タッチ してね'],
               fuki:['🧽','まどふき','て を うごかして、まど を キュッキュッ と ふこう！','ゆび で なぞって、まど を ふこう！'],
               awa:['🦠','あわあわ たいじ','ふわふわ うごく ばいきん を、あわ の て で タッチ！','ばいきん を ゆび で タッチ してね'],
@@ -7183,7 +7197,7 @@ const MODES = {
           sub:'てを ゆっくり あげて ふうせん を ふくらませ、ゆっくり おろして とばそう！' },
   shabon:{ name:'シャボンだま わり', icon:'🫧', color:'#2f7fe0',
           desc:'ふわふわ あがる<br>シャボンだまを パチン',
-          sub:'した から あがって くる シャボンだま を、てで さわって パチン と わろう！' },
+          sub:'うえ・した・ひだり・みぎ から とんで くる シャボンだま を、てで さわって パチン と わろう！' },
   mogura:{ name:'もぐら たたき', icon:'🐹', color:'#a65f33',
           desc:'かおを だした<br>もぐらを タッチ',
           sub:'からだ の まわり の あな から もぐら が でるよ。かくれる まえ に てで タッチ！（きんいろ は 2ばい）' }
