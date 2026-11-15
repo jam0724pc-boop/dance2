@@ -4425,57 +4425,138 @@ function choTap(x,y){
    ・まえ を はしる どうぶつ を おいぬく と 1かい できた
    ・じぶん め せん（がめん の おく へ コース が のびる）。がめん の うで は こども の うで と いっしょ に うごく
    ========================================================================= */
-const KAKE_LV={
-  easy  :{ e0:0.10, e1:0.50, sec:40, kinds:['turtle','dog','turtle','rabbit','dog'], sp:{turtle:0.16,dog:0.26,rabbit:0.34,cheetah:0.42} },
-  normal:{ e0:0.14, e1:0.75, sec:30, kinds:['turtle','dog','rabbit','dog','cheetah'], sp:{turtle:0.20,dog:0.34,rabbit:0.44,cheetah:0.54} },
-  hard  :{ e0:0.20, e1:1.05, sec:24, kinds:['dog','rabbit','cheetah','rabbit','cheetah'], sp:{turtle:0.26,dog:0.42,rabbit:0.54,cheetah:0.66} }
-};
+const KAKE_LV={ easy:{ e0:0.10, e1:0.50, sec:40, mul:0.72 }, normal:{ e0:0.14, e1:0.75, sec:30, mul:0.9 }, hard:{ e0:0.20, e1:1.05, sec:24, mul:1.05 } };
 const kl = ()=> KAKE_LV[SET.level] || KAKE_LV.normal;
 const K_VMAX=9;                                 // いちばん はやい とき（m/びょう）
-const K_NAME={ turtle:'かめさん', dog:'いぬさん', rabbit:'うさぎさん', cheetah:'チーターさん' };
-const K_ICON={ turtle:'🐢', dog:'🐕', rabbit:'🐰', cheetah:'🐆' };
-
-/* ---- え（うしろ すがた・2コマ） ---- */
-function kAnimalSVG(kind, f){
-  const o=`stroke="${VK}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"`;
-  const l1=f?-10:10, l2=-l1;
-  const sh='';
-  let b='';
-  if(kind==='rabbit'){
-    b=`${sh}<ellipse cx="${74+l1*0.4}" cy="178" rx="17" ry="11" fill="#fff" ${o}/><ellipse cx="${126+l2*0.4}" cy="178" rx="17" ry="11" fill="#fff" ${o}/>
-      <ellipse cx="100" cy="132" rx="46" ry="48" fill="#fff" ${o}/>
-      <ellipse cx="${62}" cy="${118+l1*0.5}" rx="11" ry="17" fill="#fff" ${o}/><ellipse cx="${138}" cy="${118+l2*0.5}" rx="11" ry="17" fill="#fff" ${o}/>
-      <circle cx="100" cy="72" r="34" fill="#fff" ${o}/>
-      <ellipse cx="84" cy="24" rx="11" ry="34" fill="#fff" ${o} transform="rotate(-10 84 40)"/><ellipse cx="116" cy="24" rx="11" ry="34" fill="#fff" ${o} transform="rotate(10 116 40)"/>
-      <ellipse cx="84" cy="26" rx="5" ry="24" fill="#ffc2d4" transform="rotate(-10 84 40)"/><ellipse cx="116" cy="26" rx="5" ry="24" fill="#ffc2d4" transform="rotate(10 116 40)"/>
-      <circle cx="100" cy="160" r="15" fill="#fff" ${o}/>`;
-  }else if(kind==='dog'){
-    b=`${sh}<rect x="${66+l1*0.5}" y="160" width="22" height="28" rx="10" fill="#d99a52" ${o}/><rect x="${112+l2*0.5}" y="160" width="22" height="28" rx="10" fill="#d99a52" ${o}/>
-      <ellipse cx="100" cy="130" rx="50" ry="44" fill="#e8b878" ${o}/>
-      <path d="M100 110 q${30+l1} -40 ${18+l1} -70" stroke="${VK}" stroke-width="15" fill="none" stroke-linecap="round"/><path d="M100 110 q${30+l1} -40 ${18+l1} -70" stroke="#e8b878" stroke-width="7" fill="none" stroke-linecap="round"/>
-      <circle cx="100" cy="72" r="36" fill="#e8b878" ${o}/>
-      <ellipse cx="66" cy="${70+l1*0.3}" rx="15" ry="26" fill="#a8743c" ${o} transform="rotate(18 66 70)"/><ellipse cx="134" cy="${70+l2*0.3}" rx="15" ry="26" fill="#a8743c" ${o} transform="rotate(-18 134 70)"/>
-      <ellipse cx="100" cy="128" rx="24" ry="20" fill="#f6dcb4"/>`;
-  }else if(kind==='turtle'){
-    b=`${sh}<ellipse cx="${60+l1*0.5}" cy="176" rx="18" ry="12" fill="#9be0b0" ${o}/><ellipse cx="${140+l2*0.5}" cy="176" rx="18" ry="12" fill="#9be0b0" ${o}/>
-      <circle cx="100" cy="92" r="24" fill="#9be0b0" ${o}/>
-      <path d="M32 166 C32 96 168 96 168 166 Z" fill="#5fb35a" ${o}/>
-      <path d="M100 104 V164 M62 128 L138 128 M74 112 L84 162 M126 112 L116 162" stroke="#3d8a3a" stroke-width="5" fill="none"/>
-      <path d="M30 166 H170" ${o} fill="none"/><path d="M100 168 l10 12 l-20 0z" fill="#9be0b0" ${o}/>`;
-  }else{ // cheetah
-    const sp=[[80,120],[112,108],[124,140],[86,150],[104,132],[70,140],[130,118]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="5" fill="#7a4a1a"/>`).join('');
-    b=`${sh}<rect x="${68+l1*0.6}" y="158" width="18" height="30" rx="8" fill="#f2c14e" ${o}/><rect x="${114+l2*0.6}" y="158" width="18" height="30" rx="8" fill="#f2c14e" ${o}/>
-      <path d="M100 150 q${-50+l1*2} 10 ${-60+l1*2} -40" stroke="${VK}" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M100 150 q${-50+l1*2} 10 ${-60+l1*2} -40" stroke="#f2c14e" stroke-width="7" fill="none" stroke-linecap="round"/>
-      <ellipse cx="100" cy="130" rx="44" ry="42" fill="#f2c14e" ${o}/>${sp}
-      <circle cx="100" cy="70" r="32" fill="#f2c14e" ${o}/>
-      <circle cx="74" cy="44" r="11" fill="#f2c14e" ${o}/><circle cx="126" cy="44" r="11" fill="#f2c14e" ${o}/>
-      <circle cx="88" cy="66" r="4" fill="#7a4a1a"/><circle cx="112" cy="62" r="4" fill="#7a4a1a"/><circle cx="100" cy="80" r="4" fill="#7a4a1a"/>`;
+// どうぶつ：うしろ すがた（2コマ）＋ ふりかえり（かお）
+const K_ANI={
+  turtle :{ name:'かめさん',     icon:'🐢', sp:0.16, h:1.0,  gait:'waddle' },
+  penguin:{ name:'ペンギンさん', icon:'🐧', sp:0.21, h:1.25, gait:'waddle' },
+  pig    :{ name:'ぶたさん',     icon:'🐷', sp:0.26, h:1.2,  gait:'trot' },
+  cat    :{ name:'ねこさん',     icon:'🐱', sp:0.31, h:1.2,  gait:'trot' },
+  dog    :{ name:'いぬさん',     icon:'🐶', sp:0.35, h:1.4,  gait:'trot' },
+  bear   :{ name:'くまさん',     icon:'🐻', sp:0.39, h:1.75, gait:'lumber' },
+  panda  :{ name:'パンダさん',   icon:'🐼', sp:0.42, h:1.7,  gait:'lumber' },
+  rabbit :{ name:'うさぎさん',   icon:'🐰', sp:0.46, h:1.45, gait:'hop' },
+  horse  :{ name:'うまさん',     icon:'🐴', sp:0.53, h:2.0,  gait:'gallop' },
+  cheetah:{ name:'チーターさん', icon:'🐆', sp:0.60, h:1.5,  gait:'gallop' }
+};
+const K_ORDER=['turtle','penguin','pig','cat','dog','bear','panda','rabbit','horse','cheetah'];
+function kAnimalSVG(kind, f, look){
+  const k=VK, o=`stroke="${k}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"`;
+  const sw=f?1:-1;                                   // あし の ふり
+  const rg=(id,a,b,c)=>`<radialGradient id="${id}" cx=".35" cy=".28" r=".85"><stop offset="0" stop-color="${a}"/><stop offset=".55" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></radialGradient>`;
+  const hi=(x,y,rx,ry,r=-25)=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#fff" opacity=".45" transform="rotate(${r} ${x} ${y})"/>`;
+  const eyes=(y,dx,r,cx=120)=>`<ellipse cx="${cx-dx}" cy="${y}" rx="${r}" ry="${r*1.15}" fill="${k}"/><ellipse cx="${cx+dx}" cy="${y}" rx="${r}" ry="${r*1.15}" fill="${k}"/><circle cx="${cx-dx-r*0.3}" cy="${y-r*0.4}" r="${r*0.4}" fill="#fff"/><circle cx="${cx+dx-r*0.3}" cy="${y-r*0.4}" r="${r*0.4}" fill="#fff"/>`;
+  const blush=(y,dx,cx=120)=>`<ellipse cx="${cx-dx}" cy="${y}" rx="9" ry="6" fill="#ff8fa8" opacity=".7"/><ellipse cx="${cx+dx}" cy="${y}" rx="9" ry="6" fill="#ff8fa8" opacity=".7"/>`;
+  const leg=(x,y,w,h,col,dir,hoof)=>{ const dx=dir*sw*8, dy=dir*sw*4;
+    return `<rect x="${x-w/2+dx}" y="${y+dy}" width="${w}" height="${h}" rx="${w/2}" fill="${col}" ${o}/>`+(hoof?`<path d="M${x-w/2+dx+2} ${y+dy+h-10} h${w-4}" stroke="${hoof}" stroke-width="9" stroke-linecap="round"/>`:''); };
+  let defs='', b='';
+  switch(kind){
+  case 'turtle': {
+    defs=rg('s','#a8e89a','#5fb35a','#3d8a3a')+rg('sk','#d4f7c8','#9be0b0','#6fbf8a');
+    b=`${leg(66,186,30,32,'url(#sk)',1)}${leg(174,186,30,32,'url(#sk)',-1)}
+       ${look?`<circle cx="120" cy="96" r="34" fill="url(#sk)" ${o}/>${eyes(92,13,6)}${blush(106,24)}<path d="M108 108 q12 9 24 0" stroke="${k}" stroke-width="4" fill="none" stroke-linecap="round"/>`
+             :`<circle cx="120" cy="96" r="26" fill="url(#sk)" ${o}/>`}
+       <path d="M120 206 l14 18 l-28 0z" fill="url(#sk)" ${o}/>
+       <path d="M28 196 C28 100 212 100 212 196 Z" fill="url(#s)" ${o}/>
+       <path d="M120 120 l26 16 v30 l-26 16 l-26 -16 v-30z" fill="#7fcf74" stroke="#3d8a3a" stroke-width="4"/>
+       <path d="M60 150 l22 -12 l14 10 v24 l-18 12 l-18 -10z M180 150 l-22 -12 l-14 10 v24 l18 12 l18 -10z" fill="#7fcf74" stroke="#3d8a3a" stroke-width="4"/>
+       ${hi(86,126,24,10)}<path d="M26 196 H214" ${o}/><path d="M34 204 Q120 216 206 204" stroke="#c9b26a" stroke-width="8" fill="none"/>`; break; }
+  case 'penguin': {
+    defs=rg('s','#5a6a96','#36426a','#232c4a');
+    b=`<path d="M${88+sw*6} 214 l-18 14 h30z M${152-sw*6} 214 l18 14 h-30z" fill="#ffa53a" ${o}/>
+       <path d="M60 120 C30 150 30 176 44 180 C54 170 62 150 70 136Z" fill="url(#s)" ${o} transform="rotate(${sw*8} 64 130)"/>
+       <path d="M180 120 C210 150 210 176 196 180 C186 170 178 150 170 136Z" fill="url(#s)" ${o} transform="rotate(${-sw*8} 176 130)"/>
+       <ellipse cx="120" cy="150" rx="60" ry="72" fill="url(#s)" ${o}/>
+       <path d="M110 214 l10 12 l10 -12z" fill="#36426a" ${o}/>
+       <circle cx="120" cy="78" r="44" fill="url(#s)" ${o}/>${hi(98,62,16,9)}${hi(92,120,14,26,-10)}
+       ${look?`<path d="M120 112 C88 112 80 88 92 70 C100 60 112 62 120 72 C128 62 140 60 148 70 C160 88 152 112 120 112Z" fill="#fff"/>${eyes(84,14,6)}${blush(98,26)}<path d="M108 96 l12 12 l12 -12z" fill="#ffa53a" ${o}/>`:''}`; break; }
+  case 'pig': {
+    defs=rg('s','#ffe0ea','#ffb3c7','#e88aa5');
+    b=`${leg(82,180,24,36,'url(#s)',1,'#c96a88')}${leg(158,180,24,36,'url(#s)',-1,'#c96a88')}
+       <ellipse cx="120" cy="146" rx="70" ry="58" fill="url(#s)" ${o}/>${hi(90,116,22,11)}
+       <path d="M120 150 c-14 -4 -14 -18 0 -16 c12 2 8 18 -4 14" stroke="${k}" stroke-width="5" fill="none" stroke-linecap="round"/>
+       <circle cx="120" cy="80" r="40" fill="url(#s)" ${o}/>
+       <path d="M86 58 L72 26 L104 46Z M154 58 L168 26 L136 46Z" fill="#ff9fba" ${o}/>
+       ${look?`${eyes(76,15,6)}${blush(92,28)}<ellipse cx="120" cy="96" rx="18" ry="13" fill="#ff9fba" ${o}/><ellipse cx="113" cy="96" rx="3.5" ry="5" fill="${k}"/><ellipse cx="127" cy="96" rx="3.5" ry="5" fill="${k}"/>`:''}`; break; }
+  case 'cat': {
+    defs=rg('s','#ffe0ac','#f6a54a','#d9822b');
+    b=`${leg(84,182,22,36,'url(#s)',1)}${leg(156,182,22,36,'url(#s)',-1)}
+       <path d="M120 170 C${160+sw*8} 160 ${196+sw*10} 120 ${184+sw*12} 72" stroke="${k}" stroke-width="22" fill="none" stroke-linecap="round"/>
+       <path d="M120 170 C${160+sw*8} 160 ${196+sw*10} 120 ${184+sw*12} 72" stroke="#f6a54a" stroke-width="12" fill="none" stroke-linecap="round"/>
+       <ellipse cx="120" cy="150" rx="58" ry="54" fill="url(#s)" ${o}/>${hi(94,124,18,9)}
+       <path d="M92 126 q8 10 0 20 M120 116 q8 12 0 24 M148 126 q-8 10 0 20" stroke="#d9822b" stroke-width="6" fill="none" stroke-linecap="round"/>
+       <circle cx="120" cy="82" r="40" fill="url(#s)" ${o}/>
+       <path d="M86 62 L80 28 L110 48Z M154 62 L160 28 L130 48Z" fill="url(#s)" ${o}/><path d="M88 54 L85 36 L100 47Z M152 54 L155 36 L140 47Z" fill="#ffb3c7"/>
+       ${look?`${eyes(80,15,6.5)}${blush(94,27)}<path d="M116 90 h8 l-4 5z" fill="#ff7a8a"/><path d="M110 99 q5 5 10 0 q5 5 10 0" stroke="${k}" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M84 92 h-20 M84 98 l-18 4 M156 92 h20 M156 98 l18 4" stroke="${k}" stroke-width="2.5"/>`
+             :`<path d="M100 80 q10 6 0 14 M140 80 q-10 6 0 14" stroke="#d9822b" stroke-width="5" fill="none" stroke-linecap="round"/>`}`; break; }
+  case 'dog': {
+    defs=rg('s','#ffe6c4','#e8b878','#c98a48');
+    b=`${leg(82,180,24,38,'#d99a52',1)}${leg(158,180,24,38,'#d99a52',-1)}
+       <path d="M120 140 q${28+sw*12} -36 ${16+sw*12} -64" stroke="${k}" stroke-width="18" fill="none" stroke-linecap="round"/><path d="M120 140 q${28+sw*12} -36 ${16+sw*12} -64" stroke="#e8b878" stroke-width="9" fill="none" stroke-linecap="round"/>
+       <ellipse cx="120" cy="148" rx="62" ry="54" fill="url(#s)" ${o}/>${hi(92,122,20,10)}<ellipse cx="120" cy="150" rx="28" ry="22" fill="#f6dcb4"/>
+       <circle cx="120" cy="80" r="42" fill="url(#s)" ${o}/>
+       <ellipse cx="80" cy="${86+sw*3}" rx="16" ry="30" fill="#a8743c" ${o} transform="rotate(16 80 86)"/><ellipse cx="160" cy="${86-sw*3}" rx="16" ry="30" fill="#a8743c" ${o} transform="rotate(-16 160 86)"/>
+       ${look?`${eyes(78,15,6.5)}${blush(94,28)}<ellipse cx="120" cy="96" rx="18" ry="14" fill="#f6dcb4"/><ellipse cx="120" cy="90" rx="8" ry="6" fill="${k}"/><path d="M114 102 q6 12 12 0z" fill="#ff7a8a" ${o}/>`:''}`; break; }
+  case 'bear': {
+    defs=rg('s','#d9a874','#a8743c','#7a5228');
+    b=`${leg(80,182,30,34,'url(#s)',1)}${leg(160,182,30,34,'url(#s)',-1)}
+       <ellipse cx="120" cy="146" rx="74" ry="64" fill="url(#s)" ${o}/>${hi(88,114,24,12)}
+       <circle cx="120" cy="164" r="12" fill="#c99a62" ${o}/>
+       <circle cx="120" cy="76" r="44" fill="url(#s)" ${o}/>
+       <circle cx="84" cy="44" r="15" fill="url(#s)" ${o}/><circle cx="156" cy="44" r="15" fill="url(#s)" ${o}/><circle cx="84" cy="44" r="7" fill="#c99a62"/><circle cx="156" cy="44" r="7" fill="#c99a62"/>
+       ${look?`${eyes(72,16,6)}${blush(90,30)}<ellipse cx="120" cy="92" rx="20" ry="15" fill="#e8c497" ${o}/><ellipse cx="120" cy="86" rx="7" ry="5" fill="${k}"/><path d="M112 98 q8 6 16 0" stroke="${k}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`:''}`; break; }
+  case 'panda': {
+    defs=rg('s','#ffffff','#f1f4f9','#cfd6e2')+rg('bk','#5a5a6e','#2f2f3e','#1c1c28');
+    b=`${leg(80,182,30,34,'url(#bk)',1)}${leg(160,182,30,34,'url(#bk)',-1)}
+       <ellipse cx="120" cy="146" rx="72" ry="62" fill="url(#s)" ${o}/>
+       <path d="M52 124 C70 104 170 104 188 124 L184 146 C160 132 80 132 56 146Z" fill="url(#bk)"/>
+       ${hi(90,152,18,9)}<circle cx="120" cy="170" r="11" fill="#fff" ${o}/>
+       <circle cx="120" cy="76" r="44" fill="url(#s)" ${o}/>
+       <circle cx="84" cy="42" r="15" fill="url(#bk)" ${o}/><circle cx="156" cy="42" r="15" fill="url(#bk)" ${o}/>
+       ${look?`<ellipse cx="102" cy="76" rx="12" ry="15" fill="#2f2f3e" transform="rotate(25 102 76)"/><ellipse cx="138" cy="76" rx="12" ry="15" fill="#2f2f3e" transform="rotate(-25 138 76)"/><circle cx="103" cy="76" r="5" fill="#fff"/><circle cx="137" cy="76" r="5" fill="#fff"/><circle cx="104" cy="77" r="2.6" fill="${k}"/><circle cx="136" cy="77" r="2.6" fill="${k}"/>${blush(96,32)}<ellipse cx="120" cy="92" rx="7" ry="5" fill="${k}"/><path d="M112 99 q8 6 16 0" stroke="${k}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`:''}`; break; }
+  case 'rabbit': {
+    defs=rg('s','#ffffff','#f3f1f8','#d6d1e4');
+    b=`<ellipse cx="${80+sw*6}" cy="208" rx="22" ry="14" fill="url(#s)" ${o}/><ellipse cx="${160-sw*6}" cy="208" rx="22" ry="14" fill="url(#s)" ${o}/>
+       <ellipse cx="120" cy="156" rx="56" ry="56" fill="url(#s)" ${o}/>${hi(96,130,16,9)}
+       <ellipse cx="72" cy="${150+sw*6}" rx="13" ry="20" fill="url(#s)" ${o}/><ellipse cx="168" cy="${150-sw*6}" rx="13" ry="20" fill="url(#s)" ${o}/>
+       <circle cx="120" cy="184" r="17" fill="#fff" ${o}/>
+       <circle cx="120" cy="94" r="38" fill="url(#s)" ${o}/>
+       <ellipse cx="102" cy="40" rx="13" ry="38" fill="url(#s)" ${o} transform="rotate(${-10-sw*4} 102 62)"/><ellipse cx="138" cy="40" rx="13" ry="38" fill="url(#s)" ${o} transform="rotate(${10-sw*4} 138 62)"/>
+       <ellipse cx="102" cy="42" rx="6" ry="27" fill="#ffc2d4" transform="rotate(${-10-sw*4} 102 62)"/><ellipse cx="138" cy="42" rx="6" ry="27" fill="#ffc2d4" transform="rotate(${10-sw*4} 138 62)"/>
+       ${look?`${eyes(92,14,6.5)}${blush(106,25)}<path d="M115 102 h10 l-5 5z" fill="#ff7a8a"/><path d="M120 107 v6 M114 114 q6 4 12 0" stroke="${k}" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="116" y="113" width="8" height="7" rx="2" fill="#fff" stroke="${k}" stroke-width="2"/>`:''}`; break; }
+  case 'horse': {
+    defs=rg('s','#f0b47a','#c47a3a','#8a4f22');
+    b=`${leg(86,150,24,74,'url(#s)',1,'#3a2a20')}${leg(154,150,24,74,'url(#s)',-1,'#3a2a20')}
+       <path d="M120 120 C${110+sw*10} 160 ${100+sw*14} 190 ${110+sw*16} 214 C${124+sw*10} 196 ${130+sw*6} 166 128 122Z" fill="#5a3418" ${o}/>
+       <ellipse cx="120" cy="124" rx="56" ry="46" fill="url(#s)" ${o}/>${hi(96,104,18,9)}
+       <path d="M108 60 C104 82 110 100 120 110 C130 100 136 82 132 60Z" fill="url(#s)" ${o}/>
+       <ellipse cx="120" cy="52" rx="30" ry="30" fill="url(#s)" ${o}/>
+       <path d="M98 34 L94 8 L112 26Z M142 34 L146 8 L128 26Z" fill="url(#s)" ${o}/>
+       <path d="M108 26 C104 50 108 84 116 106 L124 106 C130 84 134 50 130 26 C124 20 114 20 108 26Z" fill="#5a3418"/>
+       ${look?`<path d="M100 54 C98 82 106 98 120 100 C134 98 142 82 140 54Z" fill="url(#s)" ${o}/><path d="M116 34 L124 34 L122 70 L118 70Z" fill="#fff"/>${eyes(50,17,5.5)}<ellipse cx="111" cy="88" rx="4" ry="5" fill="${k}"/><ellipse cx="129" cy="88" rx="4" ry="5" fill="${k}"/>${blush(70,24)}<path d="M112 96 q8 5 16 0" stroke="${k}" stroke-width="3" fill="none" stroke-linecap="round"/>`:''}`; break; }
+  default: { // cheetah
+    defs=rg('s','#ffe08a','#f2c14e','#d99a2a');
+    const sp=[[86,130],[112,118],[138,126],[156,146],[96,156],[124,146],[146,170],[78,150],[120,176]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="5.5" fill="#6a3f14"/>`).join('');
+    b=`${leg(84,176,22,44,'url(#s)',1)}${leg(156,176,22,44,'url(#s)',-1)}
+       <path d="M120 170 q${-60+sw*12} 16 ${-92+sw*10} -40" stroke="${k}" stroke-width="18" fill="none" stroke-linecap="round"/><path d="M120 170 q${-60+sw*12} 16 ${-92+sw*10} -40" stroke="#f2c14e" stroke-width="9" fill="none" stroke-linecap="round"/>
+       <circle cx="${28+sw*10}" cy="130" r="6" fill="${k}"/>
+       <ellipse cx="120" cy="148" rx="58" ry="54" fill="url(#s)" ${o}/>${sp}${hi(94,118,16,8)}
+       <circle cx="120" cy="80" r="38" fill="url(#s)" ${o}/>
+       <circle cx="88" cy="50" r="12" fill="url(#s)" ${o}/><circle cx="152" cy="50" r="12" fill="url(#s)" ${o}/>
+       ${look?`${eyes(78,14,6)}<path d="M104 84 q-4 10 0 18 M136 84 q4 10 0 18" stroke="${k}" stroke-width="3.5" fill="none"/>${blush(96,26)}<path d="M115 92 h10 l-5 5z" fill="${k}"/><path d="M110 101 q5 5 10 0 q5 5 10 0" stroke="${k}" stroke-width="3" fill="none" stroke-linecap="round"/>`
+             :`<circle cx="104" cy="72" r="4" fill="#6a3f14"/><circle cx="136" cy="70" r="4" fill="#6a3f14"/><circle cx="120" cy="62" r="4" fill="#6a3f14"/>`}`; }
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">${b}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240"><defs>${defs}</defs>${b}</svg>`;
 }
+
+const K_NAME=Object.fromEntries(K_ORDER.map(k=>[k,K_ANI[k].name]));
+const K_ICON=Object.fromEntries(K_ORDER.map(k=>[k,K_ANI[k].icon]));
+function kKindAt(i){ const n=SET.rounds||10; return n<=10 ? K_ORDER[Math.min(9,Math.floor(i*10/n))] : K_ORDER[i%10]; }
 function kTreeSVG(t){
-  if(t===1) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260"><ellipse cx="100" cy="252" rx="56" ry="8" fill="#000" opacity=".15"/><rect x="88" y="150" width="24" height="104" rx="8" fill="#9a6a3c" stroke="${VK}" stroke-width="5"/>
-    <path d="M100 10 L170 120 H130 L180 190 H20 L70 120 H30Z" fill="#4fa56a" stroke="${VK}" stroke-width="5" stroke-linejoin="round"/><path d="M100 30 L140 100" stroke="#7fd08f" stroke-width="8" stroke-linecap="round"/></svg>`;
+  if(t===1) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260"><defs><linearGradient id="pg" x1="0" x2="1"><stop offset="0" stop-color="#7fd08f"/><stop offset=".5" stop-color="#4fa56a"/><stop offset="1" stop-color="#357f4c"/></linearGradient></defs><ellipse cx="100" cy="252" rx="56" ry="8" fill="#000" opacity=".18"/><rect x="88" y="150" width="24" height="104" rx="8" fill="#9a6a3c" stroke="${VK}" stroke-width="5"/>
+    <path d="M100 10 L170 120 H130 L180 190 H20 L70 120 H30Z" fill="url(#pg)" stroke="${VK}" stroke-width="5" stroke-linejoin="round"/><path d="M100 30 L140 100" stroke="#b6f0c0" stroke-width="8" stroke-linecap="round" opacity=".8"/><circle cx="100" cy="8" r="9" fill="#ffd34d" stroke="${VK}" stroke-width="4"/></svg>`;
   if(t===2) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120"><ellipse cx="100" cy="112" rx="90" ry="8" fill="#000" opacity=".15"/>
     <path d="M14 108 C0 60 50 40 70 60 C80 20 140 20 140 60 C170 40 206 70 186 108Z" fill="#6cc066" stroke="${VK}" stroke-width="5" stroke-linejoin="round"/>
     ${[[50,70,'#ff8fb1'],[100,52,'#fff'],[146,74,'#ffd34d'],[80,90,'#fff'],[128,96,'#ff8fb1']].map(([x,y,c])=>`<circle cx="${x}" cy="${y}" r="9" fill="${c}" stroke="${VK}" stroke-width="3"/><circle cx="${x}" cy="${y}" r="3" fill="#ffb020"/>`).join('')}</svg>`;
@@ -4483,22 +4564,27 @@ function kTreeSVG(t){
     <path d="M106 26 L190 50 L106 76Z" fill="#ff8fb1" stroke="${VK}" stroke-width="5" stroke-linejoin="round"/><circle cx="100" cy="18" r="10" fill="#ffd34d" stroke="${VK}" stroke-width="4"/></svg>`;
   if(t===4) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 200"><rect x="30" y="100" width="12" height="96" fill="#9a6a3c" stroke="${VK}" stroke-width="4"/><rect x="218" y="100" width="12" height="96" fill="#9a6a3c" stroke="${VK}" stroke-width="4"/>
     <rect x="8" y="16" width="244" height="96" rx="18" fill="#fff" stroke="${VK}" stroke-width="6"/><text x="130" y="82" text-anchor="middle" font-size="50" font-weight="900" fill="#e8487a" font-family="sans-serif">がんばれ!</text></svg>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260"><ellipse cx="100" cy="252" rx="56" ry="8" fill="#000" opacity=".15"/><rect x="88" y="140" width="24" height="114" rx="8" fill="#9a6a3c" stroke="${VK}" stroke-width="5"/>
-    <circle cx="100" cy="96" r="70" fill="#5fb35a" stroke="${VK}" stroke-width="5"/><circle cx="60" cy="120" r="40" fill="#6cc066" stroke="${VK}" stroke-width="5"/><circle cx="142" cy="116" r="42" fill="#55a84f" stroke="${VK}" stroke-width="5"/>
-    <circle cx="76" cy="70" r="16" fill="#8fdc7f"/></svg>`;
+  if(t===5) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 180"><rect x="10" y="110" width="280" height="60" rx="10" fill="#f6f1e6" stroke="${VK}" stroke-width="5"/><path d="M10 130 h280" stroke="#e8487a" stroke-width="10"/>
+    ${[['#ffd34d',40],['#8fd3ff',90],['#ff9fc0',140],['#9be0b0',190],['#c9b2ff',240]].map(([c,x],i)=>`<path d="M${x-14} ${i%2?60:70} l-14 -26 M${x+14} ${i%2?60:70} l14 -26" stroke="${VK}" stroke-width="7" stroke-linecap="round"/><path d="M${x-22} 112 q22 -50 44 0z" fill="${c}" stroke="${VK}" stroke-width="5"/><circle cx="${x}" cy="${i%2?58:66}" r="20" fill="#f6c9a0" stroke="${VK}" stroke-width="5"/><path d="M${x-8} ${i%2?62:70} q8 7 16 0" stroke="${VK}" stroke-width="3" fill="none" stroke-linecap="round"/>`).join('')}</svg>`;
+  if(t===6) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 300"><rect x="74" y="150" width="12" height="146" rx="5" fill="#fff" stroke="${VK}" stroke-width="4"/>
+    ${[[50,60,'#ff6b78'],[110,50,'#ffd34d'],[80,26,'#7cc0ff'],[40,110,'#9be0b0'],[120,104,'#ff9fc0']].map(([x,y,c])=>`<path d="M${x} ${y+34} Q${(x+80)/2} ${(y+150)/2+10} 80 150" stroke="${VK}" stroke-width="2.5" fill="none"/><ellipse cx="${x}" cy="${y}" rx="26" ry="32" fill="${c}" stroke="${VK}" stroke-width="5"/><ellipse cx="${x-9}" cy="${y-12}" rx="7" ry="10" fill="#fff" opacity=".6"/>`).join('')}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260"><defs><radialGradient id="tg" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#a6e88f"/><stop offset=".6" stop-color="#5fb35a"/><stop offset="1" stop-color="#3f8f45"/></radialGradient><linearGradient id="tt" x1="0" x2="1"><stop offset="0" stop-color="#b8834f"/><stop offset="1" stop-color="#7a5228"/></linearGradient></defs>
+    <ellipse cx="100" cy="252" rx="60" ry="9" fill="#000" opacity=".18"/><rect x="86" y="140" width="28" height="114" rx="9" fill="url(#tt)" stroke="${VK}" stroke-width="5"/>
+    <circle cx="60" cy="122" r="42" fill="url(#tg)" stroke="${VK}" stroke-width="5"/><circle cx="144" cy="118" r="44" fill="url(#tg)" stroke="${VK}" stroke-width="5"/><circle cx="100" cy="90" r="70" fill="url(#tg)" stroke="${VK}" stroke-width="5"/>
+    <circle cx="76" cy="62" r="16" fill="#d2f7bd" opacity=".8"/>${[[70,110,'#ff6b78'],[130,96,'#ff6b78'],[104,130,'#ff6b78'],[150,140,'#ff6b78']].map(([x,y,c])=>`<circle cx="${x}" cy="${y}" r="7" fill="${c}" stroke="${VK}" stroke-width="3"/>`).join('')}</svg>`;
 }
 const K_IMG={};
 function kImg(key, svg){ if(!K_IMG[key]){ const im=new Image(); im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg); K_IMG[key]=im; } return K_IMG[key]; }
 function kReady(im){ return im && im.complete && im.naturalWidth>0; }
 let _kImgs=false;
 function kInitImgs(){ if(_kImgs) return; _kImgs=true;
-  ['turtle','dog','rabbit','cheetah'].forEach(k=>{ kImg(k+0,kAnimalSVG(k,0)); kImg(k+1,kAnimalSVG(k,1)); });
-  [0,1,2,3,4].forEach(t=>kImg('t'+t,kTreeSVG(t))); }
+  K_ORDER.forEach(k=>{ kImg(k+0,kAnimalSVG(k,0,false)); kImg(k+1,kAnimalSVG(k,1,false)); kImg(k+'L',kAnimalSVG(k,0,true)); });
+  [0,1,2,3,4,5,6].forEach(t=>kImg('t'+t,kTreeSVG(t))); }
 // みち の わき の もの（なんど も くりかえす ならび）
 const K_SIDE=[]; (function(){ let r=11; const rn=()=>{ r=(r*9301+49297)%233280; return r/233280; };
   for(let z=4; z<400; z+=3.2+rn()*2.2){ const side=rn()<0.5?-1:1;
-    const t = rn()<0.12 ? 4 : rn()<0.25 ? 3 : rn()<0.45 ? 2 : rn()<0.6 ? 1 : 0;
-    K_SIDE.push({ z, lx: side*(t===4?3.2:t===2?2.7:3.3+rn()*2.6), t }); } })();
+    const r0=rn(); const t = r0<0.10 ? 4 : r0<0.20 ? 5 : r0<0.30 ? 6 : r0<0.42 ? 3 : r0<0.58 ? 2 : r0<0.74 ? 1 : 0;
+    K_SIDE.push({ z, lx: side*(t===4?3.2:t===5?3.6:t===6?3.0:t===2?2.7:3.3+rn()*2.6), t }); } })();
 
 /* ---- はじめ と 1ぴき ごと ---- */
 function kakeReset(){
@@ -4506,8 +4592,8 @@ function kakeReset(){
          list:[], cur:null, idx:0, nextAt:0, goal:null, goalHit:false, still:0, liftL:0.5, liftR:0.5, gap0:24, said:0, lines:[], dust:[], kicks:[], boost:0, fastT:0, fastCool:0 };
 }
 function kakeSpawn(){
-  const K=X.kk, L=kl(), kind=L.kinds[K.idx % L.kinds.length];
-  const a={ kind, pos:K.pos+20, lane:(K.idx%2? 1.25 : -1.25), sp:L.sp[kind]*K_VMAX, t0:XT, done:false, gone:false, ph:Math.random()*6 };
+  const K=X.kk, L=kl(), kind=kKindAt(K.idx);
+  const a={ kind, pos:K.pos+20, lane:(K.idx%2? 1.25 : -1.25), sp:K_ANI[kind].sp*L.mul*K_VMAX, t0:XT, done:false, gone:false, ph:Math.random()*6 };
   K.idx++; K.list.push(a); K.cur=a; K.gap0=20;
   elPoseName.textContent = K_ICON[kind]+' '+K_NAME[kind]+' を おいぬこう';
   elHint.textContent = G.judgeOn ? 'その ばで はしろう！ うでを ふっても、あしぶみ でも OK' : 'がめん を トントン たたくと はしるよ';
@@ -4609,10 +4695,10 @@ function kakeTick(dt){
     }
     if(a.gone){ sp = Math.max(sp, K.v+6); }
     a.pos += sp*dt;
-    const gr = a.kind==='rabbit' ? 2.6 : a.kind==='turtle' ? 2.4 : a.kind==='cheetah' ? 4.2 : 3.6;
+    const gt=K_ANI[a.kind].gait, gr = gt==='hop' ? 2.6 : gt==='waddle' ? 2.4 : gt==='gallop' ? 4.2 : gt==='lumber' ? 2.8 : 3.6;
     a.ph += dt*gr*(0.7+0.3*Math.min(1,sp/4));
     const st=Math.floor(a.ph); if(st!==a.lastSt){ a.lastSt=st; const z=a.pos-K.pos;
-      if(z>0.8 && z<60){ for(let n=0;n<(a.kind==='rabbit'?3:2);n++) K.dust.push({ pos:a.pos-0.15, lx:a.lane+(Math.random()-0.5)*0.5, life:0, s:0.5+Math.random()*0.5, vx:(Math.random()-0.5)*0.6 }); } }
+      if(z>0.8 && z<60){ for(let n=0;n<(K_ANI[a.kind].gait==='hop'?3:2);n++) K.dust.push({ pos:a.pos-0.15, lx:a.lane+(Math.random()-0.5)*0.5, life:0, s:0.5+Math.random()*0.5, vx:(Math.random()-0.5)*0.6 }); } }
   }
   K.list = K.list.filter(a=> (a.pos-K.pos) > -6 && (a.pos-K.pos) < 160);
   if(K.stage==='run' && !K.cur && XT>=K.nextAt && G.plays<SET.rounds) kakeSpawn();
@@ -4698,19 +4784,22 @@ function kakeDraw(){
     const fade = clamp((70-z)/10,0,1);
     if(it.o){
       const o=it.o, im=K_IMG['t'+o.t]; if(!kReady(im)) continue;
-      const p=P(o.lx,z), hM = o.t===2?0.9 : o.t===3?3.0 : o.t===4?1.6 : o.t===1?3.4 : 3.0;
+      const p=P(o.lx,z), hM = o.t===2?0.9 : o.t===3?3.0 : o.t===4?1.6 : o.t===5?1.5 : o.t===6?2.6 : o.t===1?3.4 : 3.0;
       const h=hM*p.s, w=h*im.naturalWidth/im.naturalHeight;
       if(B>0.2 && z<30){ const q=P(o.lx,z*0.82), h2=hM*q.s, w2=h2*im.naturalWidth/im.naturalHeight; ctx.globalAlpha=fade*0.2*B; ctx.drawImage(im,q.x-w2/2,q.y-h2,w2,h2); }
       ctx.globalAlpha=fade; ctx.drawImage(im,p.x-w/2,p.y-h,w,h); ctx.globalAlpha=1;
     }else if(it.a){
       const a=it.a; let lx=a.lane; if(z<4) lx=a.lane*(1+(4-z)*0.45);
-      const p=P(lx,z), im=K_IMG[a.kind+(Math.floor(a.ph*2)%2)]; if(!kReady(im)) continue;
-      const hM = a.kind==='turtle'?1.1 : 1.5, h=hM*p.s, w=h, ph=a.ph*Math.PI;
+      const lookB = a===KK.cur && z<5.5 && !a.done;
+      const p=P(lx,z), im=K_IMG[a.kind+(lookB?'L':(Math.floor(a.ph*2)%2))]; if(!kReady(im)) continue;
+      const hM = K_ANI[a.kind].h, h=hM*p.s, w=h, ph=a.ph*Math.PI, gt=K_ANI[a.kind].gait;
       let hopH=0, sx=1, sy=1, rot=0;
-      if(a.kind==='rabbit'){ const c=Math.abs(Math.sin(ph)); hopH=c*0.30; const land=c<0.18; sy=land?0.84:1.05; sx=land?1.14:0.96; rot=Math.sin(ph*2)*0.03; }
-      else if(a.kind==='dog'){ hopH=Math.abs(Math.sin(ph))*0.12; rot=Math.sin(ph)*0.08; sy=1+Math.cos(ph*2)*0.03; }
-      else if(a.kind==='cheetah'){ const c=Math.sin(ph); hopH=Math.abs(c)*0.14; sx=1+0.10*c; sy=1-0.09*c; rot=c*0.05; }
+      if(gt==='hop'){ const c=Math.abs(Math.sin(ph)); hopH=c*0.30; const land=c<0.18; sy=land?0.84:1.05; sx=land?1.14:0.96; rot=Math.sin(ph*2)*0.03; }
+      else if(gt==='trot'){ hopH=Math.abs(Math.sin(ph))*0.12; rot=Math.sin(ph)*0.08; sy=1+Math.cos(ph*2)*0.03; }
+      else if(gt==='gallop'){ const c=Math.sin(ph); hopH=Math.abs(c)*0.14; sx=1+0.10*c; sy=1-0.09*c; rot=c*0.05; }
+      else if(gt==='lumber'){ hopH=Math.abs(Math.sin(ph))*0.07; rot=Math.sin(ph)*0.06; sx=1+Math.cos(ph*2)*0.03; }
       else { rot=Math.sin(ph)*0.16; hopH=Math.abs(Math.sin(ph))*0.05; }
+      if(lookB){ rot*=0.4; }
       const al=clamp((150-z)/20,0,1);
       ctx.globalAlpha=al*0.22*(1-hopH); ctx.fillStyle='#000'; ctx.beginPath(); ctx.ellipse(p.x,p.y-h*0.02,w*0.3*(1-hopH*0.6),w*0.055,0,0,7); ctx.fill();
       // はしって いる せん（よこ に）
@@ -4847,38 +4936,58 @@ const BM_COL={ up:{ c1:'#ff3b4a', c2:'#ff8a95', txt:'#ff4a5a', zone:'255,59,74' 
 /* ---- かいじゅう の え ---- */
 function bmBodySVG(){
   const k=VK;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 360"><defs><radialGradient id="bg1" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#9be89f"/><stop offset="1" stop-color="#4fb562"/></radialGradient></defs>
-   <ellipse cx="150" cy="350" rx="120" ry="10" fill="#000" opacity=".22"/>
-   <path d="M200 260 q90 30 96 -70 q-30 60 -96 40z" fill="#58c26a" stroke="${k}" stroke-width="8" stroke-linejoin="round"/>
-   ${[[150,70],[190,100],[215,140],[232,185]].map(([x,y],i)=>`<path d="M${x-14} ${y+6} l${20} -${34-i*3} l${16} ${40-i*3}z" fill="#ffd34d" stroke="${k}" stroke-width="6" stroke-linejoin="round"/>`).join('')}
-   <ellipse cx="140" cy="210" rx="110" ry="130" fill="url(#bg1)" stroke="${k}" stroke-width="9"/>
-   <ellipse cx="120" cy="240" rx="66" ry="88" fill="#e4f8d4"/>
-   ${[0,1,2,3].map(i=>`<path d="M${92} ${190+i*30} h56" stroke="#bfe6ad" stroke-width="7" stroke-linecap="round"/>`).join('')}
-   <ellipse cx="44" cy="200" rx="30" ry="20" fill="#6fd17a" stroke="${k}" stroke-width="8" transform="rotate(-20 44 200)"/>
-   <path d="M70 318 v28 h54 v-28 M156 318 v28 h54 v-28" fill="#6fd17a" stroke="${k}" stroke-width="8" stroke-linejoin="round"/>
-   <path d="M80 346 v-6 M98 346 v-6 M166 346 v-6 M184 346 v-6" stroke="${k}" stroke-width="5" stroke-linecap="round"/></svg>`;
+  const spikes=[[150,76,1.0,-4],[198,92,1.08,28],[232,128,1.04,50],[250,174,0.94,70],[254,222,0.8,86]];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 360"><defs>
+   <radialGradient id="kb" cx=".32" cy=".28" r=".9"><stop offset="0" stop-color="#b6f2a8"/><stop offset=".45" stop-color="#6fd17a"/><stop offset="1" stop-color="#3f9f57"/></radialGradient>
+   <linearGradient id="kbelly" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbffe8"/><stop offset="1" stop-color="#d9f2b8"/></linearGradient>
+   <linearGradient id="ksp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff1a0"/><stop offset=".55" stop-color="#ffc93c"/><stop offset="1" stop-color="#f29a1f"/></linearGradient>
+   <linearGradient id="ktail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5cc06c"/><stop offset="1" stop-color="#3f9f57"/></linearGradient></defs>
+   <ellipse cx="150" cy="350" rx="128" ry="11" fill="#000" opacity=".25"/>
+   <!-- しっぽ -->
+   <path d="M196 262 C260 290 300 250 292 176 C284 226 250 250 206 232Z" fill="url(#ktail)" stroke="${k}" stroke-width="8" stroke-linejoin="round"/>
+   <path d="M262 236 l14 -16 l4 20z M282 206 l14 -10 l-2 18z" fill="url(#ksp)" stroke="${k}" stroke-width="5" stroke-linejoin="round"/>
+   <!-- せなか の とげ -->
+   ${spikes.map(([x,y,s,r])=>`<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})"><path d="M-22 10 C-14 -18 -6 -36 4 -46 C10 -30 18 -10 24 12Z" fill="url(#ksp)" stroke="${k}" stroke-width="6" stroke-linejoin="round"/><path d="M-4 -26 C-2 -14 0 -4 2 4" stroke="#fffbe0" stroke-width="5" stroke-linecap="round" opacity=".9"/></g>`).join('')}
+   <!-- からだ -->
+   <path d="M44 214 C30 120 90 70 150 74 C222 78 262 150 252 228 C246 296 202 336 140 336 C80 336 50 292 44 214Z" fill="url(#kb)" stroke="${k}" stroke-width="9"/>
+   <path d="M232 170 C246 220 236 280 196 318 C226 280 236 230 232 170Z" fill="#2f8346" opacity=".35"/>
+   <ellipse cx="96" cy="120" rx="30" ry="18" fill="#fff" opacity=".35" transform="rotate(-30 96 120)"/>
+   ${[[198,140],[214,182],[186,110],[222,222],[204,264]].map(([x,y],i)=>`<ellipse cx="${x}" cy="${y}" rx="${7-i%2}" ry="${5-i%2}" fill="#3f9f57" opacity=".55"/>`).join('')}
+   <!-- おなか -->
+   <path d="M68 214 C64 156 96 128 128 130 C162 132 178 170 176 226 C174 284 152 318 122 318 C92 318 70 280 68 214Z" fill="url(#kbelly)" stroke="#9ccf86" stroke-width="4"/>
+   ${[160,190,220,250,280].map((y,i)=>`<path d="M${80+i*2} ${y} Q122 ${y+10} ${166-i*3} ${y}" stroke="#b9dd9f" stroke-width="4" fill="none" stroke-linecap="round"/>`).join('')}
+   <!-- うで -->
+   <path d="M60 176 C30 184 18 206 30 222 C40 232 58 220 70 204Z" fill="url(#kb)" stroke="${k}" stroke-width="7" stroke-linejoin="round"/>
+   <path d="M26 214 l-8 6 M30 222 l-6 9 M38 226 l-2 10" stroke="#fff" stroke-width="6" stroke-linecap="round"/><path d="M26 214 l-8 6 M30 222 l-6 9 M38 226 l-2 10" stroke="${k}" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+   <!-- あし -->
+   ${[[96,312],[176,312]].map(([x,y])=>`<path d="M${x-30} ${y} C${x-32} ${y+26} ${x-26} ${y+36} ${x} ${y+36} C${x+26} ${y+36} ${x+32} ${y+26} ${x+30} ${y} Z" fill="url(#kb)" stroke="${k}" stroke-width="8" stroke-linejoin="round"/>
+     <path d="M${x-18} ${y+36} l-3 7 M${x} ${y+37} l0 8 M${x+18} ${y+36} l3 7" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M${x-18} ${y+36} l-3 7 M${x} ${y+37} l0 8 M${x+18} ${y+36} l3 7" stroke="${k}" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>`).join('')}
+  </svg>`;
 }
 function bmHeadSVG(face){
   const k=VK;
+  const eye=(cx,cy,r,look)=>`<ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${r*1.12}" fill="#fff" stroke="${k}" stroke-width="5"/><circle cx="${cx+look[0]}" cy="${cy+look[1]}" r="${r*0.62}" fill="#3a2a5a"/><circle cx="${cx+look[0]}" cy="${cy+look[1]}" r="${r*0.36}" fill="${k}"/><circle cx="${cx+look[0]-r*0.22}" cy="${cy+look[1]-r*0.28}" r="${r*0.22}" fill="#fff"/><circle cx="${cx+look[0]+r*0.24}" cy="${cy+look[1]+r*0.2}" r="${r*0.1}" fill="#fff"/>`;
   const eyes = face==='happy'
-    ? `<path d="M58 74 q16 -18 32 0" stroke="${k}" stroke-width="8" fill="none" stroke-linecap="round"/><path d="M116 66 q16 -18 32 0" stroke="${k}" stroke-width="8" fill="none" stroke-linecap="round"/>`
-    : face==='wow'
-    ? `<ellipse cx="74" cy="70" rx="22" ry="25" fill="#fff" stroke="${k}" stroke-width="6"/><circle cx="74" cy="70" r="8" fill="${k}"/><ellipse cx="132" cy="62" rx="22" ry="25" fill="#fff" stroke="${k}" stroke-width="6"/><circle cx="132" cy="62" r="8" fill="${k}"/>`
-    : `<ellipse cx="74" cy="72" rx="20" ry="23" fill="#fff" stroke="${k}" stroke-width="6"/><circle cx="68" cy="75" r="11" fill="${k}"/><circle cx="72" cy="70" r="4" fill="#fff"/>
-       <ellipse cx="132" cy="64" rx="20" ry="23" fill="#fff" stroke="${k}" stroke-width="6"/><circle cx="126" cy="67" r="11" fill="${k}"/><circle cx="130" cy="62" r="4" fill="#fff"/>`;
+    ? `<path d="M56 74 q18 -20 36 0" stroke="${k}" stroke-width="8" fill="none" stroke-linecap="round"/><path d="M116 66 q18 -20 36 0" stroke="${k}" stroke-width="8" fill="none" stroke-linecap="round"/>`
+    : face==='wow' ? eye(74,70,23,[0,0])+eye(134,62,23,[0,0])
+    : eye(74,72,21,[-6,3])+eye(134,64,21,[-6,3]);
+  const brows = face==='open' ? `<path d="M54 44 l34 10 M118 38 l30 2" stroke="${k}" stroke-width="7" stroke-linecap="round"/>` : '';
   const mouth = face==='open'
-    ? `<ellipse cx="50" cy="124" rx="40" ry="30" fill="${k}"/><ellipse cx="48" cy="134" rx="20" ry="11" fill="#ff7a8a"/><path d="M22 104 l7 12 l7 -12 M62 104 l7 12 l7 -12" fill="#fff" stroke="${k}" stroke-width="3" stroke-linejoin="round"/>`
-    : face==='wow'
-    ? `<ellipse cx="54" cy="124" rx="16" ry="20" fill="${k}"/>`
-    : face==='happy'
-    ? `<path d="M22 112 q30 36 64 0z" fill="${k}"/><path d="M36 124 q16 10 34 0" stroke="#ff7a8a" stroke-width="8" stroke-linecap="round"/>`
-    : `<path d="M26 116 q26 18 56 -2" stroke="${k}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 190"><defs><radialGradient id="hg1" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#a8ecab"/><stop offset="1" stop-color="#4fb562"/></radialGradient></defs>
-    <path d="M150 20 l14 -24 l10 28 M178 40 l22 -14 l-2 30" fill="#ffd34d" stroke="${k}" stroke-width="6" stroke-linejoin="round"/>
-    <path d="M10 100 C0 30 70 0 130 8 C200 16 216 80 200 120 C186 160 120 182 60 170 C24 162 14 140 10 100Z" fill="url(#hg1)" stroke="${k}" stroke-width="9"/>
-    <ellipse cx="30" cy="96" rx="9" ry="6" fill="${k}"/><ellipse cx="46" cy="92" rx="5" ry="4" fill="${k}" opacity=".0"/>
-    <ellipse cx="104" cy="104" rx="14" ry="9" fill="#ff9fb3" opacity=".8"/><ellipse cx="170" cy="92" rx="14" ry="9" fill="#ff9fb3" opacity=".8"/>
-    ${eyes}${mouth}</svg>`;
+    ? `<path d="M10 112 C14 150 70 164 92 128 C80 118 40 110 10 112Z" fill="#5a2340" stroke="${k}" stroke-width="6" stroke-linejoin="round"/><ellipse cx="50" cy="140" rx="22" ry="10" fill="#ff7a8a"/><path d="M20 113 l6 13 l8 -12 M66 118 l7 12 l7 -10" fill="#fff" stroke="${k}" stroke-width="3" stroke-linejoin="round"/>`
+    : face==='wow' ? `<ellipse cx="52" cy="128" rx="15" ry="19" fill="#5a2340" stroke="${k}" stroke-width="5"/><ellipse cx="52" cy="136" rx="8" ry="6" fill="#ff7a8a"/>`
+    : face==='happy' ? `<path d="M18 112 q34 44 72 0z" fill="#5a2340" stroke="${k}" stroke-width="5" stroke-linejoin="round"/><path d="M34 126 q20 12 40 0" stroke="#ff7a8a" stroke-width="9" stroke-linecap="round"/>`
+    : `<path d="M22 116 q28 20 60 -2" stroke="${k}" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M30 118 l4 8 l5 -6" fill="#fff" stroke="${k}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 190"><defs>
+    <radialGradient id="kh" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#c2f5b4"/><stop offset=".5" stop-color="#72d37c"/><stop offset="1" stop-color="#409f58"/></radialGradient>
+    <linearGradient id="khs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff1a0"/><stop offset="1" stop-color="#f29a1f"/></linearGradient></defs>
+    <path d="M140 22 C146 4 156 -4 168 -6 C164 10 162 20 160 30Z M176 40 C190 28 204 26 214 30 C204 40 196 48 188 56Z" fill="url(#khs)" stroke="${k}" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M8 104 C0 34 66 2 128 8 C196 14 218 74 204 118 C190 162 124 184 64 172 C26 164 12 140 8 104Z" fill="url(#kh)" stroke="${k}" stroke-width="9"/>
+    <path d="M186 96 C192 130 168 160 128 170 C168 150 184 124 186 96Z" fill="#2f8346" opacity=".35"/>
+    <ellipse cx="96" cy="30" rx="34" ry="14" fill="#fff" opacity=".4" transform="rotate(-8 96 30)"/>
+    <ellipse cx="22" cy="92" rx="6" ry="4" fill="${k}"/><ellipse cx="36" cy="88" rx="5" ry="3.5" fill="${k}"/>
+    <ellipse cx="102" cy="106" rx="15" ry="9" fill="#ff8fa8" opacity=".75"/><ellipse cx="172" cy="94" rx="14" ry="9" fill="#ff8fa8" opacity=".75"/>
+    ${[[150,120],[166,136],[180,110]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4" fill="#3f9f57" opacity=".5"/>`).join('')}
+    ${eyes}${brows}${mouth}</svg>`;
 }
 let _bmImgs=false;
 function bmInitImgs(){ if(_bmImgs) return; _bmImgs=true; kImg('bm_body',bmBodySVG()); for(const f of ['smile','open','wow','happy']) kImg('bm_h_'+f,bmHeadSVG(f)); }
@@ -5126,9 +5235,24 @@ function beamDraw(){
   const body=K_IMG.bm_body, head=K_IMG['bm_h_'+(B.face||'smile')];
   const bw=Kj.S*300/360, bh=Kj.S, bxl=Kj.bx-bw*0.47, byt=Kj.gy-bh, breath=Math.sin(t*2.2)*Kj.S*0.008;
   if(kReady(body)) ctx.drawImage(body,bxl,byt+breath,bw,bh-breath);
-  const nx=Kj.bx-Kj.S*0.12, ny=byt+Kj.S*0.22;
-  ctx.lineCap='round'; ctx.strokeStyle=VK; ctx.lineWidth=Kj.S*0.2+10; ctx.beginPath(); ctx.moveTo(nx,ny); ctx.lineTo(Kj.hx+Kj.hw*0.05,Kj.hy+Kj.hh*0.1); ctx.stroke();
-  ctx.strokeStyle='#62c56f'; ctx.lineWidth=Kj.S*0.2; ctx.beginPath(); ctx.moveTo(nx,ny); ctx.lineTo(Kj.hx+Kj.hw*0.05,Kj.hy+Kj.hh*0.1); ctx.stroke();
+  const nx=Kj.bx-Kj.S*0.12, ny=byt+Kj.S*0.24, ex=Kj.hx+Kj.hw*0.08, ey=Kj.hy+Kj.hh*0.12;
+  { const dx=ex-nx, dy=ey-ny, d=Math.hypot(dx,dy)||1, sg=(-dy/d)>0?1:-1, qx=-dy/d*sg, qy=dx/d*sg, wN=Kj.S*0.21;   // q ＝ みぎ（せなか）がわ
+    for(let i=1;i<=3;i++){ const f=i/4.2, cx=nx+dx*f+qx*wN*0.42, cy=ny+dy*f+qy*wN*0.42, z=Kj.S*0.055;
+      ctx.beginPath(); ctx.moveTo(cx-dx/d*z,cy-dy/d*z); ctx.lineTo(cx+qx*z*1.8,cy+qy*z*1.8); ctx.lineTo(cx+dx/d*z,cy+dy/d*z); ctx.closePath();
+      ctx.fillStyle='#ffc93c'; ctx.fill(); ctx.lineWidth=4; ctx.strokeStyle=VK; ctx.stroke(); }
+    ctx.lineCap='round'; ctx.strokeStyle=VK; ctx.lineWidth=wN+10; ctx.beginPath(); ctx.moveTo(nx,ny); ctx.lineTo(ex,ey); ctx.stroke();
+    const ng=ctx.createLinearGradient(nx+qx*wN/2,ny+qy*wN/2,nx-qx*wN/2,ny-qy*wN/2); ng.addColorStop(0,'#3f9f57'); ng.addColorStop(0.55,'#72d37c'); ng.addColorStop(1,'#a8ec9e');
+    ctx.strokeStyle=ng; ctx.lineWidth=wN; ctx.beginPath(); ctx.moveTo(nx,ny); ctx.lineTo(ex,ey); ctx.stroke();
+    ctx.strokeStyle='#eef9d6'; ctx.lineWidth=wN*0.34; ctx.beginPath(); ctx.moveTo(nx-qx*wN*0.27,ny-qy*wN*0.27); ctx.lineTo(ex-qx*wN*0.27,ey-qy*wN*0.27); ctx.stroke(); }
+  // チャージ ちゅう は せなか の とげ が ひかる
+  if(B.stage==='charge' || (B.stage==='beam' && !B.res)){
+    const c=BM_COL[B.side], k=B.stage==='charge' ? (XT-B.t0)/L.charge : 0.45;
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    for(const [sx,sy] of [[150,50],[205,70],[248,110],[272,160],[280,212],[284,206],[290,180]].slice(0,5)){
+      const x=bxl+sx*bw/300, y=byt+sy*bh/360, r=Kj.S*(0.05+0.06*k)*(1+0.2*Math.sin(t*20+sx));
+      const gg=ctx.createRadialGradient(x,y,0,x,y,r*2); gg.addColorStop(0,'rgba(255,255,255,.9)'); gg.addColorStop(0.4,c.c2); gg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.globalAlpha=0.35+0.55*k; ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(x,y,r*2,0,7); ctx.fill(); }
+    ctx.restore(); }
   if(B.stage==='charge'){
     const k=(XT-B.t0)/L.charge, c=BM_COL[B.side], r=u*(0.03+0.06*k)*(1+0.12*Math.sin(t*30));
     const gr=ctx.createRadialGradient(Kj.mx-r*0.3,Kj.my,0,Kj.mx-r*0.3,Kj.my,r*2.2); gr.addColorStop(0,'#fff'); gr.addColorStop(0.35,c.c2); gr.addColorStop(1,'rgba(255,255,255,0)');
