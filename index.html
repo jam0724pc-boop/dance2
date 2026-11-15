@@ -1049,7 +1049,7 @@ try{
   if(raw) SET = Object.assign(SET, JSON.parse(raw));
 }catch(e){}
 // この アプリ は モニターゾーン 用：ふね・ピタッ・ふうせん の 3つ だけ
-if(['yura','pita','fuse','catch','shabon','mogura','awa','fuki','cho','kake'].indexOf(SET.mode)<0) SET.mode='yura';
+if(['yura','pita','fuse','catch','shabon','mogura','awa','fuki','cho','kake','beam'].indexOf(SET.mode)<0) SET.mode='yura';
 /* はんてい の 3だんかい：むずかしさ（やさしい・ふつう・むずかしい）の なか で、さらに
    「ゆるめ・ふつう・きびしめ」を えらべる。あそび（まねっこ・タッチ・キャッチ）ごと に おぼえる。 */
 const JUDGE = {
@@ -2273,6 +2273,12 @@ BGM.kake=function(gb,t,bd){
   if(v>0.5) ch.forEach((n,i)=>bt(n+12,t+bd*i/6,bd*0.3,'triangle',0.03));
   if(v>0.55) bn(t,700+400*v,0.6,bd*0.95,0.05*(v-0.4));
 };
+BGM.beam=function(gb,t,bd){
+  const B=X.bm||{}; if(B.stage==='beam') return;
+  bkick(t,0.13); bhat(t+bd/2,0.03);
+  if(gb%2===1) bt(43,t,bd*0.5,'triangle',0.09);
+  const M=[67,0,70,0,72,0,70,67]; const m=M[gb%8]; if(m && gb%16<8) bt(m,t,bd*0.4,'sine',0.045);
+};
 function playBGM(mode, gb, t){ const f=BGM[mode]; if(f && ac && bgmG) f(gb, t, beatDur()); }
 
 function clearChant(){ elChant.innerHTML=''; }
@@ -2814,7 +2820,7 @@ function drawFruits(){
    どれも 上半身（かた・ひじ・てくび・かお）だけ で はんてい する ので、
    すわった まま（くるまいす）でも たった まま でも あそべる。
    ========================================================================= */
-const XMODES = ['yura','pita','fuse','shabon','mogura','awa','fuki','cho','kake','reach'];
+const XMODES = ['yura','pita','fuse','shabon','mogura','awa','fuki','cho','kake','beam','reach'];
 const isX = m => XMODES.indexOf(m||SET.mode) >= 0;
 
 /* 【先生へ】むずかしさ ごと の ちょうせい。すうじ を かえると やさしく／むずかしく なる。
@@ -2835,7 +2841,7 @@ const xlv = ()=> XLV[SET.level] || XLV.normal;
 
 /* ---- あそび の とけい：とまって いる（いちじ ていし）あいだ は すすまない ---- */
 let XT = 0;
-const X = { y:{}, p:{}, f:{}, s:{}, m:{}, k:{}, c:{}, r:{}, a:{}, kk:{}, fx:[] };
+const X = { y:{}, p:{}, f:{}, s:{}, m:{}, k:{}, c:{}, r:{}, a:{}, kk:{}, bm:{}, fx:[] };
 
 /* ---- からだ の よみとり を なめらか に して、あそび で つかう かたち に する ----
    ・u      ：からだ の ものさし（かたはば × 1.25 を ゆっくり ならした もの。こし が みえなくても かわらない）
@@ -2925,7 +2931,7 @@ function xReset(){
   X.k = { stage:null, start:1.0, pic:null, fog:null, cells:null, zone:null, clean:0, last:{}, ptr:null };
   X.a = { items:[], fx:[], pops:[], hp:{}, spawned:0, done:0, nextAt:1.4, col:0 };
   X.c = { stage:null, nextAt:1.6, base:null, cal:[], bx:0, by:0, hold:0, bloom:{}, lastK:null, ptr:null, dir:0 };
-  X.kk = {};
+  X.kk = {}; X.bm = {};
   X.r = { phase:'ready', until:1.6, len:10, pts:{15:[],16:[]}, sh:{L:null,R:null}, trail:[], hulls:[], hullAt:0, shown:-1 };
 }
 
@@ -4824,6 +4830,314 @@ function kakeDraw(){
   if(KK.stage==='run' && KK.still>2.2) xNotice(G.judgeOn ? 'うでを ふったり、あしぶみ したり して はしろう！' : 'がめん を トントン たたくと はしるよ', 0.6);
 }
 
+/* =========================================================================
+   9-g. かいじゅう の ビーム を よけろ（モード 'beam'）
+   ・チャージ ちゅう に、ビーム が くる ほう（うえ＝あか／した＝あお）が ひかって「！」
+   ・うえ ビーム → しゃがむ／あたま を さげる、した ビーム → ジャンプ／りょうて を あげる
+   ・はじめ に「まっすぐ」の しせい を はかり、そこ から の うごき で きめる
+   ========================================================================= */
+const BEAM_LV={
+  easy  :{ charge:2.3, beam:3.2, gap:1.5, dThr:0.20, jThr:0.18, hold:0.10 },
+  normal:{ charge:1.7, beam:2.4, gap:1.1, dThr:0.32, jThr:0.28, hold:0.16 },
+  hard  :{ charge:1.15,beam:1.7, gap:0.8, dThr:0.48, jThr:0.40, hold:0.24 }
+};
+const bl = ()=> BEAM_LV[SET.level] || BEAM_LV.normal;
+const BM_COL={ up:{ c1:'#ff3b4a', c2:'#ff8a95', txt:'#ff4a5a', zone:'255,59,74' }, down:{ c1:'#2f8fff', c2:'#9fd0ff', txt:'#2f8fff', zone:'47,143,255' } };
+
+/* ---- かいじゅう の え ---- */
+function bmBodySVG(){
+  const k=VK;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 360"><defs><radialGradient id="bg1" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#9be89f"/><stop offset="1" stop-color="#4fb562"/></radialGradient></defs>
+   <ellipse cx="150" cy="350" rx="120" ry="10" fill="#000" opacity=".22"/>
+   <path d="M200 260 q90 30 96 -70 q-30 60 -96 40z" fill="#58c26a" stroke="${k}" stroke-width="8" stroke-linejoin="round"/>
+   ${[[150,70],[190,100],[215,140],[232,185]].map(([x,y],i)=>`<path d="M${x-14} ${y+6} l${20} -${34-i*3} l${16} ${40-i*3}z" fill="#ffd34d" stroke="${k}" stroke-width="6" stroke-linejoin="round"/>`).join('')}
+   <ellipse cx="140" cy="210" rx="110" ry="130" fill="url(#bg1)" stroke="${k}" stroke-width="9"/>
+   <ellipse cx="120" cy="240" rx="66" ry="88" fill="#e4f8d4"/>
+   ${[0,1,2,3].map(i=>`<path d="M${92} ${190+i*30} h56" stroke="#bfe6ad" stroke-width="7" stroke-linecap="round"/>`).join('')}
+   <ellipse cx="44" cy="200" rx="30" ry="20" fill="#6fd17a" stroke="${k}" stroke-width="8" transform="rotate(-20 44 200)"/>
+   <path d="M70 318 v28 h54 v-28 M156 318 v28 h54 v-28" fill="#6fd17a" stroke="${k}" stroke-width="8" stroke-linejoin="round"/>
+   <path d="M80 346 v-6 M98 346 v-6 M166 346 v-6 M184 346 v-6" stroke="${k}" stroke-width="5" stroke-linecap="round"/></svg>`;
+}
+function bmHeadSVG(face){
+  const k=VK;
+  const eyes = face==='happy'
+    ? `<path d="M58 74 q16 -18 32 0" stroke="${k}" stroke-width="8" fill="none" stroke-linecap="round"/><path d="M116 66 q16 -18 32 0" stroke="${k}" stroke-width="8" fill="none" stroke-linecap="round"/>`
+    : face==='wow'
+    ? `<ellipse cx="74" cy="70" rx="22" ry="25" fill="#fff" stroke="${k}" stroke-width="6"/><circle cx="74" cy="70" r="8" fill="${k}"/><ellipse cx="132" cy="62" rx="22" ry="25" fill="#fff" stroke="${k}" stroke-width="6"/><circle cx="132" cy="62" r="8" fill="${k}"/>`
+    : `<ellipse cx="74" cy="72" rx="20" ry="23" fill="#fff" stroke="${k}" stroke-width="6"/><circle cx="68" cy="75" r="11" fill="${k}"/><circle cx="72" cy="70" r="4" fill="#fff"/>
+       <ellipse cx="132" cy="64" rx="20" ry="23" fill="#fff" stroke="${k}" stroke-width="6"/><circle cx="126" cy="67" r="11" fill="${k}"/><circle cx="130" cy="62" r="4" fill="#fff"/>`;
+  const mouth = face==='open'
+    ? `<ellipse cx="50" cy="124" rx="40" ry="30" fill="${k}"/><ellipse cx="48" cy="134" rx="20" ry="11" fill="#ff7a8a"/><path d="M22 104 l7 12 l7 -12 M62 104 l7 12 l7 -12" fill="#fff" stroke="${k}" stroke-width="3" stroke-linejoin="round"/>`
+    : face==='wow'
+    ? `<ellipse cx="54" cy="124" rx="16" ry="20" fill="${k}"/>`
+    : face==='happy'
+    ? `<path d="M22 112 q30 36 64 0z" fill="${k}"/><path d="M36 124 q16 10 34 0" stroke="#ff7a8a" stroke-width="8" stroke-linecap="round"/>`
+    : `<path d="M26 116 q26 18 56 -2" stroke="${k}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 190"><defs><radialGradient id="hg1" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#a8ecab"/><stop offset="1" stop-color="#4fb562"/></radialGradient></defs>
+    <path d="M150 20 l14 -24 l10 28 M178 40 l22 -14 l-2 30" fill="#ffd34d" stroke="${k}" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M10 100 C0 30 70 0 130 8 C200 16 216 80 200 120 C186 160 120 182 60 170 C24 162 14 140 10 100Z" fill="url(#hg1)" stroke="${k}" stroke-width="9"/>
+    <ellipse cx="30" cy="96" rx="9" ry="6" fill="${k}"/><ellipse cx="46" cy="92" rx="5" ry="4" fill="${k}" opacity=".0"/>
+    <ellipse cx="104" cy="104" rx="14" ry="9" fill="#ff9fb3" opacity=".8"/><ellipse cx="170" cy="92" rx="14" ry="9" fill="#ff9fb3" opacity=".8"/>
+    ${eyes}${mouth}</svg>`;
+}
+let _bmImgs=false;
+function bmInitImgs(){ if(_bmImgs) return; _bmImgs=true; kImg('bm_body',bmBodySVG()); for(const f of ['smile','open','wow','happy']) kImg('bm_h_'+f,bmHeadSVG(f)); }
+
+/* ---- まち の はいけい ---- */
+let _bmbg=null,_bmbgKey='';
+function bmBG(){
+  const k=CW+'x'+CH; if(_bmbg && _bmbgKey===k) return _bmbg; _bmbgKey=k;
+  _bmbg=sceneMake(g=>{
+    const s=g.createLinearGradient(0,0,0,CH); s.addColorStop(0,'#1a1748'); s.addColorStop(0.6,'#3d3392'); s.addColorStop(1,'#5b4bb0'); g.fillStyle=s; g.fillRect(0,0,CW,CH);
+    let r=5; const rn=()=>{ r=(r*9301+49297)%233280; return r/233280; };
+    for(let i=0;i<90;i++){ g.fillStyle=`rgba(255,255,255,${0.4+rn()*0.5})`; g.beginPath(); g.arc(rn()*CW, rn()*CH*0.6, 0.8+rn()*1.8, 0, 7); g.fill(); }
+    const m=Math.min(CW,CH); g.fillStyle='#fff6c8'; g.beginPath(); g.arc(CW*0.1,CH*0.14,m*0.06,0,7); g.fill(); g.fillStyle='#1d1a4d'; g.beginPath(); g.arc(CW*0.1+m*0.028,CH*0.14-m*0.015,m*0.055,0,7); g.fill();
+    // たてもの（2れつ）
+    const row=(base,hmin,hmax,col,win)=>{ let x=-10; while(x<CW*0.98){ const w=CW*(0.05+rn()*0.05), h=CH*(hmin+rn()*(hmax-hmin));
+        g.fillStyle=col; g.fillRect(x,base-h,w,h+2);
+        if(win) for(let yy=base-h+CH*0.03; yy<base-CH*0.02; yy+=CH*0.045) for(let xx=x+w*0.15; xx<x+w*0.85; xx+=w*0.24){ g.fillStyle = rn()<0.55 ? 'rgba(255,224,138,.9)' : 'rgba(80,70,160,.9)'; g.fillRect(xx,yy,w*0.12,CH*0.022); }
+        x+=w+CW*0.006; } };
+    row(CH*0.95, 0.18, 0.34, '#2c2670', false);
+    row(CH*0.95, 0.10, 0.24, '#3a3180', true);
+    g.fillStyle='#231e5c'; g.fillRect(0,CH*0.95,CW,CH*0.05);
+  });
+  return _bmbg;
+}
+
+/* ---- すすみかた ---- */
+function beamReset(){
+  X.bm={ stage:'calib', t0:0, side:null, last:[], base:null, cal:[], dodged:false, hold:0, res:null, resT:0, head:0, face:'smile',
+         beamP:0, sparks:[], stars:[], said:false, live:null, nextAt:0, beepAt:0, lastWave:null };
+}
+function bmLevels(){ return { dThr:bl().dThr/judgeHit(), jThr:bl().jThr/judgeHit() }; }
+function bmPose(){                                  // いま の しせい（はじめ を 0 と して）
+  const b=G.body, B=X.bm; if(!b || !B.base || !XB.u) return null;
+  const unit=XB.u/1.25, n=b.P[0]; if(!n || n.v<0.4) return null;
+  const nose=(n.y-B.base.ny)/unit, sh=(b.shMid.y-B.base.sy)/unit;
+  const W=[b.P[15],b.P[16]].filter(p=>p&&p.v>0.45);
+  const handsUp = W.length>=1 && W.every(p=> p.y < n.y - unit*0.15) && (W.length===2 || SET.level==='easy');
+  return { drop: Math.max(nose, sh), rise: Math.max(-nose, -sh), handsUp };
+}
+function bmNext(){
+  const B=X.bm, L=bl();
+  let side = Math.random()<0.5 ? 'up' : 'down';
+  if(B.last.length>=2 && B.last[B.last.length-1]===side && B.last[B.last.length-2]===side) side = side==='up'?'down':'up';
+  B.last.push(side); B.side=side; B.stage='charge'; B.t0=XT; B.dodged=false; B.hold=0; B.res=null; B.beamP=0; B.beepAt=XT; B.face='open';
+  elPoseName.textContent = side==='up' ? '🔴 うえ から ビーム！' : '🔵 した から ビーム！';
+  elHint.textContent = G.judgeOn ? (side==='up' ? 'しゃがむ か、あたまを さげて よけよう' : 'ジャンプ か、りょうてを あげて よけよう') : 'がめんを タッチ すると よけるよ';
+}
+function bmFinish(ok){
+  const B=X.bm; if(B.res) return;
+  B.res = ok ? 'ok' : 'ng'; B.resT=XT; B.stage='after'; B.face = ok ? 'wow' : 'happy';
+  G.log.push({ id:'beam', ok }); G.plays++;
+  elRound.textContent = Math.min(G.plays+1, SET.rounds)+' / '+SET.rounds;
+  const t = ac ? ac.currentTime : 0;
+  if(ok){ G.stars++; G.combo++; elStar.textContent=G.stars; (G.combo>=3?SFX.great:SFX.ok)(t);
+          bigText('よけた！', '#fff3a8'); flash('rgba(255,224,110,1)'); G.mood='happy';
+          speak(pick(['よけた！ じょうず！','よけた！ すごい！','ばっちり！ よけたね！']), 1.05, 1.35);
+          const w=bmWipe(); for(let i=0;i<26;i++) B.stars.push({ x:w.x+w.w/2, y:w.y+w.h/2, vx:(Math.random()-0.5)*700, vy:-Math.random()*600-100, life:0, c:pick(['#ffd34d','#fff','#ff9fc0','#9fd0ff']), s:8+Math.random()*10 }); }
+  else  { G.combo=0; if(ac){ sweep(520,260,t,0.35,'sine',0.14); tone(392,t+0.2,0.25,'triangle',0.1); }
+          bigText('あたっちゃった！', '#cfe9ff'); G.mood='oops'; speak('おしい！ つぎは よけよう', 1.0, 1.25); }
+  if(G.plays >= SET.rounds){
+    setTimeout(()=>{ if(!G.running) return; bigText('クリア！ やったね！', '#fff3a8'); burst(90); flash('rgba(255,224,110,1)');
+      if(ac){ const t2=ac.currentTime; [523.25,659.25,783.99,1046.5,783.99,1046.5,1318.5].forEach((f,i)=>tone(f,t2+i*0.12,0.45,'triangle',0.26)); }
+      speak('クリア！ やったね！', 1.05, 1.35); G.running=false; laterSummary(2800); }, 1100);
+  }else B.nextAt = XT + 1.0 + bl().gap;
+}
+// ビーム の おと（ビーーー）
+function bmBeamSound(dur, up){
+  if(!ac) return; const t=at(ac.currentTime);
+  const o=ac.createOscillator(), l=ac.createOscillator(), lg=ac.createGain(), f=ac.createBiquadFilter(), g=ac.createGain();
+  o.type='sawtooth'; o.frequency.setValueAtTime(up?720:300,t); l.frequency.value=up?14:9; lg.gain.value=up?40:25; l.connect(lg); lg.connect(o.frequency);
+  f.type='lowpass'; f.frequency.value=up?2600:1400;
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.09,t+0.04); g.gain.setValueAtTime(0.09,t+dur-0.15); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(f); f.connect(g); g.connect(master); o.start(t); l.start(t); o.stop(t+dur+0.05); l.stop(t+dur+0.05);
+  noiseHit(t,up?3000:1200,0.8,0.3,0.18);
+}
+function beamTick(dt){
+  if(!X.bm || !X.bm.stage) beamReset();
+  const B=X.bm, L=bl();
+  B.head = lerp(B.head, B.stage==='charge'||B.stage==='beam' ? (B.side==='up'?1:-1) : 0, 1-Math.exp(-dt/0.18));
+  // ① まっすぐ を はかる
+  if(B.stage==='calib'){
+    if(!G.judgeOn){ B.stage='gap'; B.nextAt=XT+0.6; return; }
+    const b=G.body;
+    if(b && b.P[0] && b.P[0].v>0.4) B.cal.push({ ny:b.P[0].y, sy:b.shMid.y });
+    if(XT>1.6 && B.cal.length>=10){
+      const med=k=>B.cal.map(o=>o[k]).sort((a,c)=>a-c)[B.cal.length>>1];
+      B.base={ ny:med('ny'), sy:med('sy') }; B.stage='gap'; B.nextAt=XT+0.5;
+      speak('じゅんび OK！ かいじゅうが くるよ！', 1.05, 1.3);
+    }
+    return;
+  }
+  // いま の しせい
+  const P = G.judgeOn ? bmPose() : null, T=bmLevels();
+  B.live = P ? (P.drop>T.dThr ? 'down' : (P.rise>T.jThr || P.handsUp) ? 'up' : 'mid') : null;
+  if(B.stage==='gap' || B.stage==='after'){
+    // まっすぐ に もどって いる とき は、すこし ずつ はじめ の いち を あわせなおす（すわりなおし など）
+    const b=G.body;
+    if(P && B.base && b && Math.abs(P.drop)<0.12 && Math.abs(P.rise)<0.12){ const a=1-Math.exp(-dt/4); B.base.ny=lerp(B.base.ny,b.P[0].y,a); B.base.sy=lerp(B.base.sy,b.shMid.y,a); }
+    if(B.stage==='after' && XT-B.resT>0.9) B.face='smile';
+    if(XT>=B.nextAt && G.plays<SET.rounds && G.running) bmNext();
+  }
+  else if(B.stage==='charge'){
+    const el=XT-B.t0, k=el/L.charge;
+    const gapB = lerp(0.42,0.12,k);
+    if(XT-B.beepAt>=gapB && ac){ B.beepAt=XT; tone(B.side==='up'? 1046.5+k*400 : 523.25+k*200, ac.currentTime, 0.07, 'square', 0.08); }
+    if(!B.said && el>0.15){ B.said=true; }
+    if(el>=L.charge){ B.stage='beam'; B.t0=XT; B.said=false; bmBeamSound(L.beam, B.side==='up');
+      speak(B.side==='up' ? 'しゃがめ！' : 'ジャンプ！', 1.15, 1.4); }
+    // チャージ の さいご の ほう で もう よけて いても OK
+    if(G.judgeOn && el>L.charge-0.5 && B.live===(B.side==='up'?'down':'up')) B.hold+=dt;
+  }
+  else if(B.stage==='beam'){
+    const el=XT-B.t0;
+    B.beamP=clamp(el/0.25,0,1);
+    if(G.judgeOn){ if(B.live===(B.side==='up'?'down':'up')) B.hold+=dt; else B.hold=Math.max(0,B.hold-dt*0.5); if(B.hold>=L.hold) B.dodged=true; }
+    if(B.dodged && !B.res && el>0.35) bmFinish(true);
+    if(el>=L.beam){ if(!B.res) bmFinish(!!B.dodged); }
+  }
+  for(const s of B.stars){ s.life+=dt; s.vy+=900*dt; s.x+=s.vx*dt; s.y+=s.vy*dt; }
+  B.stars=B.stars.filter(s=>s.life<1.3);
+}
+function beamTap(){ const B=X.bm; if(!B) return; if(B.stage==='beam' || (B.stage==='charge' && XT-B.t0>bl().charge-0.5)){ B.dodged=true; if(B.stage==='beam' && XT-B.t0>0.35) bmFinish(true); } }
+function beamSpace(){ beamTap(); }
+
+/* ---- えがく ---- */
+function bmWipe(){ const w=Math.min(CW*0.19,250), h=w*0.75; return { x:14, y:CH-h-14, w, h }; }
+function bmKaiju(){                                    // かいじゅう の いち と、くち の いち
+  const S=Math.min(CH*0.5, CW*0.36), bx=CW*0.83, gy=CH*0.955, B=X.bm||{head:0};
+  const laneUp=CH*0.26, laneDn=CH*0.74, mid=gy-S*0.98;
+  const hd=B.head||0;
+  const hy = hd>0 ? lerp(mid, laneUp-S*0.03, hd) : lerp(mid, laneDn-S*0.03, -hd);
+  const hx = bx - S*0.26 - Math.abs(hd)*S*0.04;
+  const rot = -hd*0.18;
+  const hw=S*0.62, hh=hw*190/220;
+  const mx = hx + Math.cos(rot)*(-hw*0.27) - Math.sin(rot)*(hh*0.17), my = hy + Math.sin(rot)*(-hw*0.27) + Math.cos(rot)*(hh*0.17);
+  return { S, bx, gy, hx, hy, rot, hw, hh, mx, my };
+}
+function beamDraw(){
+  bmInitImgs();
+  if(!X.bm || !X.bm.stage) beamReset();
+  const B=X.bm, L=bl(), u=Math.min(CW,CH), t=now(), Kj=bmKaiju();
+  ctx.save();
+  ctx.drawImage(bmBG(),0,0,CW,CH);
+  const midY=CH*0.5;
+  // ゾーン（うえ＝あか・した＝あお）
+  const act = (B.stage==='charge'||B.stage==='beam') ? B.side : null;
+  for(const sd of ['up','down']){
+    const y0 = sd==='up'?0:midY, on = act===sd;
+    const pul = on ? (B.stage==='charge' ? 0.18+0.16*Math.abs(Math.sin(t*(6+8*(XT-B.t0)/L.charge))) : 0.22) : 0.06;
+    ctx.fillStyle=`rgba(${BM_COL[sd].zone},${pul})`; ctx.fillRect(0,y0,CW,midY);
+  }
+  ctx.setLineDash([18,12]); ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,midY); ctx.lineTo(CW,midY); ctx.stroke(); ctx.setLineDash([]);
+  // チャージ の「！」
+  if(B.stage==='charge'){
+    const k=(XT-B.t0)/L.charge, y = B.side==='up' ? CH*0.24 : CH*0.74, s=u*(0.16+0.03*Math.sin(t*14));
+    ctx.font=`900 ${s}px ${FF}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=u*0.02; ctx.strokeStyle='#fff'; ctx.fillStyle=BM_COL[B.side].c1;
+    ctx.globalAlpha = 0.6+0.4*Math.abs(Math.sin(t*10)); ctx.strokeText('！',CW*0.38,y); ctx.fillText('！',CW*0.38,y); ctx.globalAlpha=1;
+    ctx.font=`900 ${u*0.05}px ${FF}`; ctx.lineWidth=8; ctx.strokeStyle=VK; ctx.fillStyle='#fff';
+    const lab = B.side==='up' ? 'うえ から くるよ！' : 'した から くるよ！'; ctx.strokeText(lab,CW*0.38,y+s*0.62); ctx.fillText(lab,CW*0.38,y+s*0.62);
+  }
+  // カメラ の こども（ひだり した）
+  const W=bmWipe();
+  if(G.judgeOn && video.readyState>=2){
+    ctx.save(); rrPath(ctx,W.x,W.y,W.w,W.h,16); ctx.clip();
+    const vw=video.videoWidth||640, vh=video.videoHeight||480, sc=Math.max(W.w/vw,W.h/vh);
+    ctx.translate(W.x+W.w,W.y); ctx.scale(-1,1); ctx.drawImage(video,(W.w-vw*sc)/2,(W.h-vh*sc)/2,vw*sc,vh*sc); ctx.restore();
+    ctx.lineWidth=5; ctx.strokeStyle= B.res==='ok' ? '#3ddc84' : '#fff'; rrPath(ctx,W.x,W.y,W.w,W.h,16); ctx.stroke();
+    const lab = B.stage==='calib' ? 'まっすぐ …' : B.live==='down' ? '⬇ しゃがんだ！' : B.live==='up' ? '⬆ とんだ！' : 'きみ';
+    const col = B.live==='down' ? '#ff4a5a' : B.live==='up' ? '#2f8fff' : '#e8487a';
+    ctx.font=`900 16px ${FF}`; const tw=ctx.measureText(lab).width+22;
+    ctx.fillStyle=col; rrPath(ctx,W.x+8,W.y+8,tw,28,14); ctx.fill(); ctx.fillStyle='#fff'; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText(lab,W.x+19,W.y+22);
+  }
+  // かいじゅう（からだ → くび → あたま）
+  const body=K_IMG.bm_body, head=K_IMG['bm_h_'+(B.face||'smile')];
+  const bw=Kj.S*300/360, bh=Kj.S, bxl=Kj.bx-bw*0.47, byt=Kj.gy-bh;
+  const breath = Math.sin(t*2.2)*Kj.S*0.008;
+  if(kReady(body)) ctx.drawImage(body,bxl,byt+breath,bw,bh-breath);
+  const nx=Kj.bx-Kj.S*0.12, ny=byt+Kj.S*0.22;
+  ctx.lineCap='round'; ctx.strokeStyle=VK; ctx.lineWidth=Kj.S*0.2+10; ctx.beginPath(); ctx.moveTo(nx,ny); ctx.lineTo(Kj.hx+Kj.hw*0.05,Kj.hy+Kj.hh*0.1); ctx.stroke();
+  ctx.strokeStyle='#62c56f'; ctx.lineWidth=Kj.S*0.2; ctx.beginPath(); ctx.moveTo(nx,ny); ctx.lineTo(Kj.hx+Kj.hw*0.05,Kj.hy+Kj.hh*0.1); ctx.stroke();
+  // チャージ の ひかり（くち の まえ）
+  if(B.stage==='charge'){
+    const k=(XT-B.t0)/L.charge, c=BM_COL[B.side], r=u*(0.03+0.07*k)*(1+0.12*Math.sin(t*30));
+    const gr=ctx.createRadialGradient(Kj.mx-r*0.3,Kj.my,0,Kj.mx-r*0.3,Kj.my,r*2.2); gr.addColorStop(0,'#fff'); gr.addColorStop(0.35,c.c2); gr.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(Kj.mx-r*0.3,Kj.my,r*2.2,0,7); ctx.fill();
+    for(let i=0;i<8;i++){ const a=t*3+i*0.785, d=r*(2.6+((t*2+i*0.3)%1)*-1.6+1.6); ctx.fillStyle=c.c2; ctx.beginPath(); ctx.arc(Kj.mx-r*0.3+Math.cos(a)*d, Kj.my+Math.sin(a)*d, u*0.008, 0, 7); ctx.fill(); }
+  }
+  if(kReady(head)){ ctx.save(); ctx.translate(Kj.hx,Kj.hy); ctx.rotate(Kj.rot); ctx.drawImage(head,-Kj.hw/2,-Kj.hh/2,Kj.hw,Kj.hh); ctx.restore(); }
+  // ビーム
+  if(B.stage==='beam' || (B.stage==='after' && XT-B.resT<0.35 && B.side)){
+    const c=BM_COL[B.side], y=Kj.my, x1=Kj.mx-u*0.02, fade = B.stage==='after' ? 1-(XT-B.resT)/0.35 : 1;
+    const x0 = x1 - x1*(B.beamP||1), th=u*0.07*(1+0.08*Math.sin(t*40));
+    ctx.globalAlpha=fade;
+    ctx.fillStyle=c.c2; ctx.globalAlpha=0.35*fade; rrPath(ctx,x0-th,y-th*1.6,x1-x0+th,th*3.2,th*1.6); ctx.fill();
+    ctx.globalAlpha=0.75*fade; rrPath(ctx,x0-th*0.6,y-th,x1-x0+th*0.6,th*2,th); ctx.fill();
+    ctx.globalAlpha=fade; ctx.fillStyle=c.c1; rrPath(ctx,x0-th*0.4,y-th*0.6,x1-x0+th*0.4,th*1.2,th*0.6); ctx.fill();
+    ctx.fillStyle='#fff'; rrPath(ctx,x0-th*0.2,y-th*0.22,x1-x0+th*0.2,th*0.44,th*0.22); ctx.fill();
+    for(let i=0;i<10;i++){ const xx=x0+((t*900+i*137)%Math.max(1,x1-x0)), yy=y+Math.sin(t*20+i)*th*1.3; ctx.globalAlpha=0.8*fade; ctx.beginPath(); ctx.arc(xx,yy,th*0.12,0,7); ctx.fill(); }
+    ctx.globalAlpha=fade; const rr=th*1.4; const g2=ctx.createRadialGradient(x1,y,0,x1,y,rr*1.6); g2.addColorStop(0,'#fff'); g2.addColorStop(0.5,c.c2); g2.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(x1,y,rr*1.6,0,7); ctx.fill();
+    ctx.globalAlpha=1;
+  }
+  // しじ（おおきな もじ・やじるし・うごき の え）
+  if(B.stage==='beam'){
+    const up=B.side==='up', c=BM_COL[B.side], cx=CW*0.42, ty=CH*0.5;
+    const fs=Math.min(u*0.15, CW*0.1), pop=1+0.06*Math.sin(t*10);
+    ctx.save(); ctx.translate(cx,ty); ctx.scale(pop,pop); ctx.font=`900 ${fs}px ${FF}`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.lineJoin='round'; ctx.lineWidth=fs*0.2; ctx.strokeStyle='#fff'; ctx.strokeText(up?'しゃがめ！':'ジャンプ！',0,0);
+    ctx.lineWidth=fs*0.07; ctx.strokeStyle=VK; ctx.strokeText(up?'しゃがめ！':'ジャンプ！',0,0); ctx.fillStyle=c.txt; ctx.fillText(up?'しゃがめ！':'ジャンプ！',0,0); ctx.restore();
+    // やじるし（ひだり と みぎ）
+    const bounce=(Math.sin(t*9)*0.5+0.5)*u*0.04*(up?1:-1);
+    ctx.font=`900 ${fs}px ${FF}`; const tw=ctx.measureText(up?'しゃがめ！':'ジャンプ！').width*pop;
+    for(const ax of [cx-tw/2-u*0.08, Math.min(cx+tw/2+u*0.08, Kj.hx-Kj.hw*0.6)]){
+      const ay=ty+bounce, a=u*0.07;
+      ctx.save(); ctx.translate(ax,ay); if(!up) ctx.rotate(Math.PI);
+      ctx.beginPath(); ctx.moveTo(-a*0.32,-a*1.1); ctx.lineTo(a*0.32,-a*1.1); ctx.lineTo(a*0.32,-a*0.1); ctx.lineTo(a*0.75,-a*0.1); ctx.lineTo(0,a*0.8); ctx.lineTo(-a*0.75,-a*0.1); ctx.lineTo(-a*0.32,-a*0.1); ctx.closePath();
+      ctx.fillStyle=c.c1; ctx.fill(); ctx.lineWidth=6; ctx.strokeStyle='#fff'; ctx.stroke(); ctx.restore();
+    }
+    // うごき の え カード（よける ほう の ゾーン に）
+    const cw=Math.min(CW*0.36,420), chh=cw*0.5, cxx=cx-cw/2, cyy = up ? CH*0.62 : CH*0.1;
+    ctx.fillStyle='rgba(255,255,255,.96)'; rrPath(ctx,cxx,cyy,cw,chh,20); ctx.fill(); ctx.lineWidth=5; ctx.strokeStyle=VK; ctx.stroke();
+    ctx.strokeStyle='#e5ddcc'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(cxx+cw/2,cyy+14); ctx.lineTo(cxx+cw/2,cyy+chh-14); ctx.stroke();
+    bmPict(cxx+cw*0.25, cyy+chh*0.43, chh*0.62, up, false, c.c1, B.live);
+    bmPict(cxx+cw*0.75, cyy+chh*0.43, chh*0.62, up, true, c.c1, B.live);
+    ctx.font=`900 ${Math.max(13,chh*0.12)}px ${FF}`; ctx.fillStyle=VK; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(up?'しゃがむ':'ジャンプ', cxx+cw*0.25, cyy+chh*0.86); ctx.fillText(up?'あたまを さげる':'りょうてを あげる', cxx+cw*0.75, cyy+chh*0.86);
+  }
+  // よけた とき の キラキラ
+  for(const s of B.stars){ ctx.globalAlpha=Math.max(0,1-s.life/1.3); ctx.fillStyle=s.c; ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.life*6);
+    ctx.beginPath(); for(let i=0;i<10;i++){ const r=i%2?s.s*0.45:s.s, a=i*Math.PI/5-Math.PI/2; ctx[i?'lineTo':'moveTo'](Math.cos(a)*r,Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.restore(); }
+  ctx.globalAlpha=1;
+  ctx.restore();
+  if(B.stage==='calib' && G.judgeOn) xNotice('まっすぐ まえを みてね … いま はかって いるよ', 0.5);
+}
+// うごき の え（ひと の かたち）。chair＝すわって する ほう。2つ の しせい の あいだ を いったり きたり
+const BM_POSE={
+  stand :{ hd:[0,-0.36], nk:[0,-0.22], hp:[0,0.06], el:[[-0.12,-0.08],[0.12,-0.08]], hn:[[-0.15,0.06],[0.15,0.06]], kn:[[-0.07,0.25],[0.07,0.25]], ft:[[-0.08,0.44],[0.08,0.44]] },
+  crouch:{ hd:[0,-0.02], nk:[0,0.1], hp:[0,0.3], el:[[-0.16,0.18],[0.16,0.18]], hn:[[-0.2,0.3],[0.2,0.3]], kn:[[-0.2,0.32],[0.2,0.32]], ft:[[-0.1,0.44],[0.1,0.44]] },
+  jump  :{ hd:[0,-0.52], nk:[0,-0.38], hp:[0,-0.1], el:[[-0.16,-0.5],[0.16,-0.5]], hn:[[-0.22,-0.66],[0.22,-0.66]], kn:[[-0.1,0.06],[0.1,0.06]], ft:[[-0.06,0.24],[0.06,0.24]] },
+  sit   :{ hd:[-0.04,-0.3], nk:[-0.04,-0.16], hp:[-0.04,0.14], el:[[-0.14,0.0],[0.06,0.0]], hn:[[-0.02,0.14],[0.14,0.12]], kn:[[0.16,0.16],[0.2,0.16]], ft:[[0.16,0.44],[0.2,0.44]] },
+  bow   :{ hd:[0.14,-0.04], nk:[0.08,0.0], hp:[-0.04,0.14], el:[[0.02,0.1],[0.12,0.1]], hn:[[0.12,0.18],[0.2,0.16]], kn:[[0.16,0.16],[0.2,0.16]], ft:[[0.16,0.44],[0.2,0.44]] },
+  situp :{ hd:[-0.04,-0.3], nk:[-0.04,-0.16], hp:[-0.04,0.14], el:[[-0.2,-0.34],[0.12,-0.34]], hn:[[-0.24,-0.52],[0.16,-0.52]], kn:[[0.16,0.16],[0.2,0.16]], ft:[[0.16,0.44],[0.2,0.44]] }
+};
+function bmPict(x,y,s,up,chair,col,live){
+  const k0=clamp((Math.sin(now()*4)*0.5+0.5)*1.6-0.3,0,1), k=k0*k0*(3-2*k0);
+  const A=BM_POSE[chair?'sit':'stand'], Bp=BM_POSE[up ? (chair?'situp':'jump') : (chair?'bow':'crouch')];
+  const L=(a,b)=>[ (a[0]+(b[0]-a[0])*k)*s, (a[1]+(b[1]-a[1])*k)*s ];
+  ctx.save(); ctx.translate(x,y); ctx.lineCap='round'; ctx.lineJoin='round';
+  if(chair){ ctx.strokeStyle='#a39cb8'; ctx.lineWidth=s*0.06; ctx.beginPath(); ctx.moveTo(-s*0.2,s*0.2); ctx.lineTo(s*0.26,s*0.2); ctx.moveTo(-s*0.16,s*0.2); ctx.lineTo(-s*0.16,s*0.46); ctx.moveTo(s*0.22,s*0.2); ctx.lineTo(s*0.22,s*0.46); ctx.moveTo(-s*0.2,s*0.2); ctx.lineTo(-s*0.2,-s*0.12); ctx.stroke(); }
+  else if(up){ ctx.strokeStyle='rgba(43,35,64,.3)'; ctx.lineWidth=3; ctx.setLineDash([5,5]); ctx.beginPath(); ctx.moveTo(-s*0.24,s*0.46); ctx.lineTo(s*0.24,s*0.46); ctx.stroke(); ctx.setLineDash([]); }
+  const hd=L(A.hd,Bp.hd), nk=L(A.nk,Bp.nk), hp=L(A.hp,Bp.hp);
+  const seg=(pts,w)=>{ ctx.lineWidth=w; ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.stroke(); };
+  ctx.strokeStyle=col;
+  for(const i of [0,1]){ seg([hp, L(A.kn[i],Bp.kn[i]), L(A.ft[i],Bp.ft[i])], s*0.1); }
+  seg([nk,hp], s*0.17);
+  for(const i of [0,1]){ seg([nk, L(A.el[i],Bp.el[i]), L(A.hn[i],Bp.hn[i])], s*0.085); }
+  ctx.fillStyle=col; ctx.beginPath(); ctx.arc(hd[0],hd[1],s*0.12,0,7); ctx.fill();
+  ctx.restore();
+}
+
 xReset();                                    // はじめる まえ から からっぽ の じょうたい を つくって おく
 
 /* ---- まとめ：1こま ごと に よぶ ---- */
@@ -4832,6 +5146,7 @@ function xTick(dt){
   XT += dt;
   xSense(dt);
   if(SET.mode==='kake'){ kakeTick(dt); return; }
+  if(SET.mode==='beam'){ beamTick(dt); return; }
   if(SET.mode==='yura') yuraTick(dt); else if(SET.mode==='pita') pitaTick(dt);
   else if(SET.mode==='fuse') fuseTick(dt); else if(SET.mode==='shabon') shabonTick(dt);
   else if(SET.mode==='fuki') fkTick(dt); else if(SET.mode==='cho') choTick(dt); else if(SET.mode==='reach') reachTick(dt);
@@ -4840,6 +5155,7 @@ function xTick(dt){
 }
 function xDraw(){
   if(SET.mode==='kake'){ kakeDraw(); return; }
+  if(SET.mode==='beam'){ beamDraw(); return; }
   if(SET.mode==='yura') yuraDraw(); else if(SET.mode==='pita') pitaDraw();
   else if(SET.mode==='fuse') fuseDraw(); else if(SET.mode==='shabon') shabonDraw();
   else if(SET.mode==='fuki') fkDraw(); else if(SET.mode==='cho') choDraw(); else if(SET.mode==='reach') reachDraw();
@@ -4850,6 +5166,7 @@ function xDraw(){
 function xTap(x,y){
   if(!G.running || PAUSE.on) return;
   if(SET.mode==='kake'){ kakeTap(); return; }
+  if(SET.mode==='beam'){ beamTap(); return; }
   if(SET.mode==='yura') yuraTap(x,y); else if(SET.mode==='pita') pitaTap();
   else if(SET.mode==='fuse') fuseTap(); else if(SET.mode==='shabon') shabonTap(x,y);
   else if(SET.mode==='fuki') fkPointer(x,y,true); else if(SET.mode==='cho') choTap(x,y); else if(SET.mode==='reach') {}
@@ -4860,6 +5177,7 @@ function xTap(x,y){
 function xSpace(){
   if(!G.running || PAUSE.on) return;
   if(SET.mode==='kake'){ kakeSpace(); return; }
+  if(SET.mode==='beam'){ beamSpace(); return; }
   if(SET.mode==='yura'){ if(X.y.star) yuraDone(true); }
   else if(SET.mode==='pita') pitaTap();
   else if(SET.mode==='fuse') fuseTap();
@@ -5992,6 +6310,7 @@ function requestWakeLock(){
   }catch(e){}
 }
 const START_SAY_ALL = {
+    beam:'かいじゅうの ビームを よけよう！ うえから きたら しゃがむ、したから きたら ジャンプ！ すわった ままでも いいよ。',
     kake:'その ばで はしって、まえの どうぶつを おいぬこう！ うでを ふっても いいよ。',
     mimic:'リズムに あわせて まねっこ しよう！', touch:'でてきた まと に タッチ しよう！', catch:'おちてくる フルーツ を キャッチ しよう！',
     yura:'からだを かたむけて、ふねを はこぼう！', pita:'おんがくで うごいて、とまったら ピタッ！', fuse:'ゆっくり てを あげて、ふうせんを ふくらませよう！',
@@ -6000,10 +6319,10 @@ const START_SAY_ALL = {
     awa:'ばいきんが でてきたよ！ あわの てで タッチして、やっつけよう！',
     cho:'まっすぐ まえを みてね。かおを うごかして、ちょうちょを おはなへ つれて いこう！' };
 /* ---- はじまる まえ：え と なまえ を みせて「3・2・1」 ---- */
-const INTRO_SUB = { kake:'その ばで はしって、どうぶつを おいぬこう', yura:'からだを かたむけて、ふねを ☆まで はこぼう', pita:'おんがくで うごいて、とまったら ピタッ！', fuse:'ゆっくり てを あげて、ふうせんを ふくらませよう',
+const INTRO_SUB = { beam:'うえは しゃがむ、したは ジャンプで よけよう', kake:'その ばで はしって、どうぶつを おいぬこう', yura:'からだを かたむけて、ふねを ☆まで はこぼう', pita:'おんがくで うごいて、とまったら ピタッ！', fuse:'ゆっくり てを あげて、ふうせんを ふくらませよう',
   catch:'おちてくる フルーツを キャッチ しよう', shabon:'シャボンだまを てで さわって パチン！', mogura:'かおを だした もぐらを タッチ！',
   awa:'あわの てで ばいきんを タッチ しよう', fuki:'てを うごかして まどを キュッキュッ', cho:'かおを うごかして ちょうちょを おはなへ' };
-const INTRO_BG = { kake:'#ffe2c4', yura:'#bfe3f7', pita:'#e2d6f5', fuse:'#e6dcff', catch:'#d6f0cf', shabon:'#d9ecff', mogura:'#dff0cc', awa:'#cfe6f7', fuki:'#d9eef7', cho:'#fbdde9' };
+const INTRO_BG = { beam:'#d9d2ff', kake:'#ffe2c4', yura:'#bfe3f7', pita:'#e2d6f5', fuse:'#e6dcff', catch:'#d6f0cf', shabon:'#d9ecff', mogura:'#dff0cc', awa:'#cfe6f7', fuki:'#d9eef7', cho:'#fbdde9' };
 let introTimers=[];
 function introCancel(){ introTimers.forEach(clearTimeout); introTimers=[]; $('#introCard').classList.add('hidden'); }
 function beginGame(withCamera){
@@ -6067,6 +6386,7 @@ async function beginGameNow(withCamera, noSay){
               fuki:['🧽','まどふき','て を うごかして、まど を キュッキュッ と ふこう！','ゆび で なぞって、まど を ふこう！'],
               awa:['🦠','あわあわ たいじ','ふわふわ うごく ばいきん を、あわ の て で タッチ！','ばいきん を ゆび で タッチ してね'],
               cho:['🦋','ちょうちょ さんぽ','かお を ゆっくり うごかして、ちょうちょ を おはな へ','ちょうちょ を ゆび で おはな へ つれて いこう'],
+              beam:['🦖','ビームを よけろ','うえは しゃがむ、したは ジャンプ','がめんを タッチ すると よけるよ'],
               kake:['🏃','かけっこ','その ばで はしって、どうぶつを おいぬこう','がめん を トントン たたくと はしるよ'],
               reach:['📏','とどく ところ を はかる','て を ぐーっと のばして、ぐるっと うごかそう','カメラ で はかります']}[SET.mode];
     if(VBG[SET.mode]) elPoseChip.querySelector('.em').innerHTML=svgImgTag(VICON(SET.mode),'hi'); else elPoseChip.querySelector('.em').textContent=XM[0];
@@ -6110,6 +6430,10 @@ const vg=(id,a,b)=>`<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop
 const vrg=(id,a,b)=>`<radialGradient id="${id}" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></radialGradient>`;
 const shine=(x,y,rx,ry,r=-30)=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#fff" opacity=".7" transform="rotate(${r} ${x} ${y})"/>`;
 const VP={
+ kaiju:(p)=>`<g><path d="M40 10 l6 -9 l4 11 M50 18 l10 -5 l-1 12" fill="#ffd34d" stroke="${VK}" stroke-width="2.5" stroke-linejoin="round"/>
+   <path d="M6 36 C4 14 24 6 40 8 C58 10 62 28 58 40 C54 52 38 58 22 55 C12 53 7 46 6 36Z" fill="#6fd17a" stroke="${VK}" stroke-width="3"/>
+   <ellipse cx="24" cy="28" rx="6" ry="7" fill="#fff" stroke="${VK}" stroke-width="2"/><circle cx="23" cy="29" r="3" fill="${VK}"/><ellipse cx="41" cy="25" rx="6" ry="7" fill="#fff" stroke="${VK}" stroke-width="2"/><circle cx="40" cy="26" r="3" fill="${VK}"/>
+   <ellipse cx="17" cy="44" rx="9" ry="6" fill="${VK}"/><ellipse cx="17" cy="46" rx="4" ry="2.5" fill="#ff7a8a"/><ellipse cx="33" cy="37" rx="4" ry="2.5" fill="#ff9fb3"/><ellipse cx="52" cy="33" rx="4" ry="2.5" fill="#ff9fb3"/></g>`,
  shoe:(p)=>`<g><path d="M2 22 h12 M0 30 h10 M4 38 h8" stroke="#8fd3ff" stroke-width="3" stroke-linecap="round"/><path d="M14 42 C14 32 22 30 28 31 L36 22 C40 19 45 21 47 25 L52 33 C58 35 62 39 62 44 V48 H14Z" fill="#f08a24" stroke="${VK}" stroke-width="3" stroke-linejoin="round"/>
    <path d="M12 48 H64 V54 Q64 56 62 56 H14 Q12 56 12 54Z" fill="#fff" stroke="${VK}" stroke-width="3" stroke-linejoin="round"/><path d="M33 29 l6 5 M37 25 l6 5 M30 33 l6 5" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><path d="M20 44 h28" stroke="#ffd34d" stroke-width="3" stroke-linecap="round"/></g>`,
  boat:(p)=>`<g>${''}<path d="M30 8 V44" stroke="${VK}" stroke-width="3"/><path d="M32 10 L52 40 H32z" fill="#f5b820" stroke="${VK}" stroke-width="3" stroke-linejoin="round"/><path d="M28 16 L13 40 H28z" fill="#fff" stroke="${VK}" stroke-width="3" stroke-linejoin="round"/>
@@ -6137,7 +6461,7 @@ const VP={
 };
 const VDEFS=(p)=>`<defs>${vg(p+'hull','#ff7a5c','#d63f2b')}${vrg(p+'grn','#b6ffc8','#2fbf5b')}${vrg(p+'pur','#d4c2ff','#7a5ad8')}${vrg(p+'red','#ff9a8a','#d8322a')}
  ${vrg(p+'bub','#ffffff','#bfe6ff')}${vg(p+'brn','#c08250','#8a5530')}${vrg(p+'gre','#c9f5bd','#4fae46')}${vg(p+'yel','#ffe680','#f5b820')}${vrg(p+'ora','#ffd7a0','#ff9330')}</defs>`;
-const MODE_ART={kake:'shoe',yura:'boat',pita:'light',fuse:'balloon',catch:'apple',shabon:'bubble',mogura:'mole',awa:'germ',fuki:'sponge',cho:'fly'};
+const MODE_ART={beam:'kaiju',kake:'shoe',yura:'boat',pita:'light',fuse:'balloon',catch:'apple',shabon:'bubble',mogura:'mole',awa:'germ',fuki:'sponge',cho:'fly'};
 function VICON(m,size=64){const p='i'+m;return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="${size}" height="${size}">${VDEFS(p)}${VP[MODE_ART[m]](p)}</svg>`;}
 // カード の ばめん
 const VBG={
@@ -6159,6 +6483,10 @@ const VBG={
  fuki:`<rect width="240" height="150" fill="url(#Sky)"/><path d="M0 120 q120 -20 240 0 V150 H0z" fill="#8fd17a"/>
    <rect width="240" height="150" fill="#eef4f8" opacity=".86"/><path d="M40 70 C80 30 140 110 200 60" stroke="#bfe8ff" stroke-width="44" fill="none" stroke-linecap="round" opacity=".95"/>
    <g transform="translate(-30 -18)"><circle cx="120" cy="76" r="20" fill="#fff" stroke="${VK}" stroke-width="3"/><circle cx="113" cy="74" r="2.5" fill="${VK}"/><circle cx="127" cy="74" r="2.5" fill="${VK}"/><ellipse cx="108" cy="54" rx="6" ry="14" fill="#fff" stroke="${VK}" stroke-width="3"/><ellipse cx="132" cy="54" rx="6" ry="14" fill="#fff" stroke="${VK}" stroke-width="3"/></g>`,
+ beam:`<rect width="240" height="150" fill="#2a2470"/><rect y="75" width="240" height="75" fill="#3d3392"/>${[[20,20],[70,12],[120,30],[200,16],[160,8],[40,44]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1.6" fill="#fff"/>`).join('')}
+   ${[[0,26,46],[30,22,62],[56,30,40],[90,24,56],[118,28,44]].map(([x,w,h])=>`<rect x="${x}" y="${150-h}" width="${w}" height="${h}" fill="#2c2670"/><rect x="${x+5}" y="${150-h+8}" width="5" height="6" fill="#ffe08a"/><rect x="${x+13}" y="${150-h+20}" width="5" height="6" fill="#ffe08a"/>`).join('')}
+   <rect width="240" height="75" fill="#ff3b4a" opacity=".16"/><line x1="0" y1="75" x2="240" y2="75" stroke="#fff" stroke-dasharray="6 5" stroke-width="2" opacity=".6"/>
+   <rect x="0" y="30" width="170" height="22" rx="11" fill="#ff8a95" opacity=".7"/><rect x="0" y="35" width="170" height="12" rx="6" fill="#ff3b4a"/><rect x="0" y="39" width="170" height="4" rx="2" fill="#fff"/><circle cx="170" cy="41" r="10" fill="#fff"/>`,
  kake:`<rect width="240" height="150" fill="url(#Sky)"/><circle cx="204" cy="26" r="13" fill="#ffe9a0"/><path d="M0 62 l30 -12 l30 8 l30 -14 l40 10 l40 -12 l30 10 l40 -6 V70 H0z" fill="#9fc7e8"/><rect y="64" width="240" height="86" fill="#8fd16f"/>
    <path d="M108 64 H132 L232 150 H8Z" fill="#e98b5a"/><path d="M108 64 L8 150 M132 64 L232 150" stroke="#fff" stroke-width="4"/><path d="M116 64 L80 150 M124 64 L160 150" stroke="#fff" stroke-width="2.5"/>
    <g transform="translate(140 96) scale(.9)"><ellipse cy="14" rx="12" ry="3" fill="#000" opacity=".15"/><ellipse rx="11" ry="12" fill="#fff" stroke="${VK}" stroke-width="2.5"/><circle cy="-15" r="8" fill="#fff" stroke="${VK}" stroke-width="2.5"/><ellipse cx="-4" cy="-28" rx="3" ry="8" fill="#fff" stroke="${VK}" stroke-width="2"/><ellipse cx="4" cy="-28" rx="3" ry="8" fill="#fff" stroke="${VK}" stroke-width="2"/><circle cy="6" r="4" fill="#fff" stroke="${VK}" stroke-width="2"/></g>
@@ -6168,7 +6496,7 @@ const VBG={
    ${[[40,96,'#ff8fb1'],[204,92,'#b48cff'],[60,30,'#ff6b6b']].map(([x,y,c])=>`<g transform="translate(${x} ${y})"><path d="M0 0 v40" stroke="#3e9a4f" stroke-width="4"/>${[0,60,120,180,240,300].map(r=>`<ellipse rx="7" ry="11" cy="-9" fill="${c}" stroke="${VK}" stroke-width="2" transform="rotate(${r})"/>`).join('')}<circle r="6" fill="#ffd34d" stroke="${VK}" stroke-width="2"/></g>`).join('')}
    <path d="M70 40 C90 50 110 60 140 68" stroke="#fff" stroke-width="3" stroke-dasharray="2 8" fill="none" stroke-linecap="round"/>`
 };
-const VICONPOS={kake:[6,86,0.95],yura:[78,40,1.25],pita:[90,30,1.3],fuse:[86,26,1.4],catch:[88,44,1.15],shabon:[86,34,1.25],mogura:[88,46,1.15],awa:[74,34,1.3],fuki:[146,62,1.0],cho:[118,52,0.95]};
+const VICONPOS={beam:[166,24,1.15],kake:[6,86,0.95],yura:[78,40,1.25],pita:[90,30,1.3],fuse:[86,26,1.4],catch:[88,44,1.15],shabon:[86,34,1.25],mogura:[88,46,1.15],awa:[74,34,1.3],fuki:[146,62,1.0],cho:[118,52,0.95]};
 function VSCENE(m){const p='s'+m;const [x,y,s]=VICONPOS[m];
  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" preserveAspectRatio="xMidYMid slice"><defs>${vg('Sky','#9fd8ff','#e9f7ff')}${vg('Lav','#c7b8ff','#f3eeff')}${vg('Rain','#bfe6ff','#fdf3ff')}${vg('Pink','#cdeeff','#fff0f7')}</defs>${VDEFS(p)}${VBG[m]}<g transform="translate(${x} ${y}) scale(${s})">${VP[MODE_ART[m]](p)}</g></svg>`;}
 
@@ -6246,7 +6574,7 @@ function showSummary(){
     const tk = r.id.indexOf('touch_')===0 ? TOUCH_KINDS[r.id.slice(6)] : null;
     const XN = {yura:{emoji:'⛵',name:'ふね'}, pita:{emoji:'🚦',name:'ピタッ'}, fuse:{emoji:'🎈',name:'ふうせん'},
                 shabon:{emoji:'🫧',name:'シャボンだま'}, mogura:{emoji:'🐹',name:'もぐら'},
-                awa:{emoji:'🦠',name:'ばいきん'}, fuki:{emoji:'🧽',name:'まどふき'}, cho:{emoji:'🦋',name:'ちょうちょ'}, kake:{emoji:'🏃',name:'かけっこ'}};
+                awa:{emoji:'🦠',name:'ばいきん'}, fuki:{emoji:'🧽',name:'まどふき'}, cho:{emoji:'🦋',name:'ちょうちょ'}, kake:{emoji:'🏃',name:'かけっこ'}, beam:{emoji:'🦖',name:'ビーム'}};
     const p = POSES[r.id] || XN[r.id] || (tk ? {emoji:tk.emoji, name:tk.name+' タッチ'}
              : (r.id==='catch_fruit' ? {emoji:'🍎', name:'キャッチ'}
                                      : {emoji:'❓', name:'？'}));
@@ -6334,13 +6662,15 @@ const MODES = {
 MODES.catch.name='フルーツ キャッチ';
 MODES.fuki={ name:'まどふき', icon:'🧽', color:'#1f9aa8', desc:'まど を ふくと<br>なにか が でてくる',
              sub:'て を うごかして、くもった まど を キュッキュッ と ふこう！ うしろ に なにか が かくれて いるよ' };
+MODES.beam={ name:'ビームを よけろ', icon:'🦖', color:'#7a5ad8', desc:'かいじゅうの ビームを<br>よける',
+             sub:'かいじゅうの ビームを よけよう！ うえは しゃがむ（あたまを さげる）、したは ジャンプ（りょうてを あげる）！' };
 MODES.kake={ name:'かけっこ', icon:'🏃', color:'#f08a24', desc:'その ばで はしって<br>どうぶつを おいぬく',
              sub:'その ばで はしろう！ うでを ふっても、あしぶみ でも OK。まえの どうぶつを おいぬこう！' };
 MODES.cho ={ name:'ちょうちょ さんぽ', icon:'🦋', color:'#e8487a', desc:'かお で ちょうちょ を<br>おはな へ',
              sub:'かお を ゆっくり うごかして、ちょうちょ を ひかって いる おはな へ つれて いこう！' };
 MODES.awa ={ name:'あわあわ たいじ', icon:'🦠', color:'#3a8de0', desc:'あわ の て で<br>ばいきん を やっつけ',
              sub:'ふわふわ うごく ばいきん を、あわ の て で タッチ して やっつけよう！' };
-const MODE_ORDER=['kake','yura','pita','fuse','catch','shabon','mogura','awa','fuki','cho'];
+const MODE_ORDER=['kake','beam','yura','pita','fuse','catch','shabon','mogura','awa','fuki','cho'];
 const PARTS = { hand:'✋ てだけ', both:'✋🦶 てと あし' };
 const elModes=$('#modeSel'), elParts=$('#partsSel');
 MODE_ORDER.forEach(k=>{
@@ -6348,7 +6678,7 @@ MODE_ORDER.forEach(k=>{
   const b=document.createElement('button');
   b.className='mcard'; b.dataset.m=k; b.style.setProperty('--c', M.color);
   const NB2={yura:'ゆらゆら<br>ふね',pita:'ピタッと<br>ストップ',fuse:'ふうせん<br>のびのび',catch:'フルーツ<br>キャッチ',shabon:'シャボンだま<br>わり',
-             mogura:'もぐら<br>たたき',awa:'あわあわ<br>たいじ',fuki:'まどふき',cho:'ちょうちょ<br>さんぽ',kake:'かけっこ'};
+             mogura:'もぐら<br>たたき',awa:'あわあわ<br>たいじ',fuki:'まどふき',cho:'ちょうちょ<br>さんぽ',kake:'かけっこ',beam:'ビームを<br>よけろ'};
   if(typeof VSCENE==='function' && VBG[k]){
     b.classList.add('vc');
     b.innerHTML = '<span class="mpic">'+svgImgTag(VSCENE(k))+'</span>'+
@@ -6421,7 +6751,8 @@ function paintLevels(){
     const XL=XLV[SET.level]||XLV.normal;
     const top=clamp(XL.fTop-(judgeHit()-1)*0.4,0.35,0.97);
     $('#levelNote').textContent =
-        SET.mode==='kake' ? ({easy:'カメ・イヌ中心 ／ 小さな動きでも進みます',normal:'カメ・イヌ・ウサギ ／ ふつうの動きで進みます',hard:'ウサギ・チーター ／ 大きく速い動きが必要'}[SET.level]||'ふつうの動きで進みます')
+        SET.mode==='beam' ? ({easy:'予告とビームが長め ／ 小さな動きでOK',normal:'ふつうの速さ',hard:'予告とビームが短め ／ 大きな動きが必要'}[SET.level]||'ふつうの速さ')
+      : SET.mode==='kake' ? ({easy:'カメ・イヌ中心 ／ 小さな動きでも進みます',normal:'カメ・イヌ・ウサギ ／ ふつうの動きで進みます',hard:'ウサギ・チーター ／ 大きく速い動きが必要'}[SET.level]||'ふつうの動きで進みます')
       : SET.mode==='yura' ? ('体の傾き 約'+XL.yFull+'° ／ ☆1個 '+XL.ySec+'秒')
       : SET.mode==='pita' ? (XL.pNeed+'秒 止まれたら成功'+(SET.level==='hard'?' ／ 止まるポーズを指定します':''))
       : SET.mode==='fuse' ? ('手を上げる高さ：'+(top<0.62?'顔くらい':top<0.82?'頭の上':'腕をまっすぐ上'))
@@ -6548,6 +6879,9 @@ showStep(1);
 
 /* 遊びの説明（先生向けは漢字、子ども向けの一文は ひらがな） */
 const MODE_INFO = {
+  beam:{ sit:1, stand:1, aim:'見て判断して動く反応（視覚・聴覚の合図への反応）、上下方向への体幹の動き', part:'頭と肩の上下（しゃがむ／頭を下げる）、手首（両手を上げる）',
+         lv:'やさしい：予告とビームが長く、小さな動きでOK ／ むずかしい：短く、大きな動きが必要', say:'「あかい ひかりは うえ！ しゃがめ！」「あおい ひかりは した！ ジャンプ！」',
+         care:'始める前に「まっすぐ」の姿勢を測ります。座ったままなら、頭を下げる・両手を上げるでよけられます。当たっても、やさしい演出で終わります' },
   kake:{ sit:1, stand:1, aim:'リズミカルな反復運動（腕ふり・足ぶみ）、持久力・心肺機能の向上', part:'腕ふり（手首・ひじ）と足ぶみ（ひざ）。速く動いている方で判定',
          lv:'やさしい：小さな動きでも進みます（カメ・イヌ中心） ／ むずかしい：ウサギ・チーター、大きく速い動きが必要', say:'「ヨーイ、ドン！ うでを ふって、うさぎさんを おいぬこう！」',
          care:'片手だけ・小さな動きでも少しずつ進みます。時間がたつと動物がゆっくりになり、最後は自動でゴールまで進むので、どの子もゴールできます' },
@@ -6639,7 +6973,7 @@ function goCamera(){ if(camCheckWanted()) camCheckOpen(); else beginGame(true); 
 function paintCamSeg(){ const v=SET.camCheck!==false?'1':'0'; document.querySelectorAll('#segCam button').forEach(b=>b.classList.toggle('on', b.dataset.v===v)); }
 document.querySelectorAll('#segCam button').forEach(b=>b.addEventListener('click', ()=>{ SET.camCheck = b.dataset.v==='1'; saveSet(); paintCamSeg(); }));
 paintCamSeg();
-const HAND_MODES={kake:1,catch:1,shabon:1,mogura:1,awa:1,fuki:1,fuse:1};
+const HAND_MODES={beam:1,kake:1,catch:1,shabon:1,mogura:1,awa:1,fuki:1,fuse:1};
 function camCheckOpen(){
   CC.on=true; $('#ccSkip').checked=false;
   $('#camCheck').classList.remove('hidden');
