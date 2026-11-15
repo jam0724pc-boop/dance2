@@ -87,6 +87,7 @@
   .floor .tbar h2{ text-shadow:0 2px 0 rgba(20,16,60,.5); }
 
 
+  #rFx{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:30; }
   /* ===== はじめて でも わかる：ステップ・ボタン・せつめい ===== */
   .screen > .topbtns{ position:absolute; top:max(12px,1.6vh); right:14px; display:flex; gap:10px; z-index:5; }
   .tbtn{ font:inherit; font-weight:900; font-size:clamp(13px,1.7vw,16px); padding:9px 15px; border-radius:999px;
@@ -739,6 +740,7 @@
 
 <!-- けっか がめん -->
 <div class="screen floor hidden" id="resultScreen">
+  <canvas id="rFx"></canvas>
   <div class="faces" id="rFace" style="display:none">🎉</div>
   <h1 class="rhead" id="rTitle">よく がんばりました！</h1>
   <div class="rslots" id="rStars"></div>
@@ -890,6 +892,7 @@
         <button class="chipbtn" id="tGuide">🎯 的の表示</button>
         <button class="chipbtn" id="tSkel">🦴 骨組みの線</button>
         <button class="chipbtn" id="tLR">🔴🔵 左右の色</button>
+        <button class="chipbtn" id="tHat">👒 かぶりもの</button>
         <button class="chipbtn" id="tMirrorTxt">🪞 ミラー表示（固定）</button>
       </div>
     </div>
@@ -5185,7 +5188,7 @@ function bmKaiju(){                                    // かいじゅう の �
 }
 // きみ の キャラ を かく（c：しゃがむ、j：とぶ、face：カメラ の かお を いれる）
 function bmAvatar(x,gy,s,c,j,opt){
-  opt=opt||{}; const g=ctx, KC=VK, t=now();
+  opt=opt||{}; const g=opt.ctx||ctx, KC=VK, t=now();
   const hitK = opt.hit ? Math.max(0,1-(opt.hit)/0.8) : 0;
   g.save(); g.globalAlpha = opt.alpha!==undefined ? opt.alpha : 1;
   g.translate(x,gy);
@@ -5398,6 +5401,200 @@ function bmPict(x,y,s,up,chair,col,live){
   ctx.restore();
 }
 
+/* =========================================================================
+   9-h. カメラ の じぶん に かぶりもの（あそび ごと）
+   ========================================================================= */
+function hatSVG(kind){
+  const k=VK, o=`stroke="${k}" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"`;
+  const W=(b)=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200">${b}</svg>`;
+  switch(kind){
+  case 'yura': return W(`<defs><linearGradient id="h1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#dfe6f2"/></linearGradient></defs>
+    <path d="M28 170 C26 70 72 34 120 32 C168 34 214 70 212 170Z" fill="url(#h1)" ${o}/>
+    <path d="M14 168 C80 196 160 196 226 168 L222 188 C160 214 80 214 18 188Z" fill="#2f5fd0" ${o}/>
+    <path d="M30 150 C90 168 150 168 210 150" stroke="#2f5fd0" stroke-width="12" fill="none"/>
+    <circle cx="120" cy="104" r="28" fill="#ffd34d" ${o}/><path d="M120 86 v34 M106 100 h28 M108 116 q12 12 24 0" stroke="${k}" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="80" cy="70" rx="22" ry="10" fill="#fff" opacity=".8" transform="rotate(-25 80 70)"/>`);
+  case 'pita': return W(`<path d="M60 186 L120 10 L180 186Z" fill="#ff6b9a" ${o}/>
+    <path d="M86 112 L154 112 M74 150 L166 150" stroke="#ffd34d" stroke-width="12"/><path d="M98 76 L142 76" stroke="#7cc0ff" stroke-width="10"/>
+    <circle cx="120" cy="12" r="18" fill="#ffd34d" ${o}/>${[[82,130,'#7cc0ff'],[150,96,'#9be0b0'],[118,170,'#fff']].map(([x,y,c])=>`<circle cx="${x}" cy="${y}" r="7" fill="${c}"/>`).join('')}`);
+  case 'fuse': return W(`<path d="M30 190 Q120 120 210 190" stroke="${k}" stroke-width="18" fill="none" stroke-linecap="round"/><path d="M30 190 Q120 120 210 190" stroke="#ff9fc0" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="M80 158 Q70 120 64 92 M160 158 Q170 120 176 92" stroke="${k}" stroke-width="3" fill="none"/>
+    <ellipse cx="62" cy="62" rx="34" ry="40" fill="#a87bff" ${o}/><ellipse cx="178" cy="62" rx="34" ry="40" fill="#ff6b78" ${o}/>
+    <ellipse cx="50" cy="46" rx="8" ry="13" fill="#fff" opacity=".7"/><ellipse cx="166" cy="46" rx="8" ry="13" fill="#fff" opacity=".7"/>`);
+  case 'catch': return W(`<defs><linearGradient id="h4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#e8c26a"/></linearGradient></defs>
+    <ellipse cx="120" cy="170" rx="114" ry="26" fill="url(#h4)" ${o}/>
+    <path d="M58 168 C56 90 90 70 120 70 C150 70 184 90 182 168Z" fill="url(#h4)" ${o}/>
+    <path d="M58 142 C100 156 140 156 182 142 L182 164 C140 178 100 178 58 164Z" fill="#e8484f" ${o}/>
+    ${[90,110,130,150].map(x=>`<path d="M${x} 80 v54" stroke="#d9a94a" stroke-width="3"/>`).join('')}
+    <circle cx="176" cy="150" r="13" fill="#ff4a5a" ${o}/><path d="M176 137 q3 -8 8 -10" stroke="${k}" stroke-width="3" fill="none"/>`);
+  case 'shabon': return W(`<path d="M30 186 L46 80 L84 130 L120 54 L156 130 L194 80 L210 186Z" fill="#ffd34d" ${o}/>
+    <path d="M30 186 H210" ${o}/>${[[46,80],[120,54],[194,80]].map(([x,y])=>`<circle cx="${x}" cy="${y-16}" r="18" fill="rgba(180,230,255,.7)" stroke="#5aa9d6" stroke-width="4"/><path d="M${x-8} ${y-24} a10 10 0 0 1 8 -6" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>`).join('')}
+    <circle cx="120" cy="150" r="12" fill="#ff9fc0" ${o}/><circle cx="80" cy="160" r="8" fill="#7cc0ff" ${o}/><circle cx="160" cy="160" r="8" fill="#9be0b0" ${o}/>`);
+  case 'mogura': return W(`<defs><radialGradient id="h6" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff3a0"/><stop offset="1" stop-color="#f2b11e"/></radialGradient></defs>
+    <path d="M30 168 C28 80 74 40 120 40 C166 40 212 80 210 168Z" fill="url(#h6)" ${o}/>
+    <path d="M16 166 H224 L220 186 H20Z" fill="#f2b11e" ${o}/><path d="M120 40 V168" stroke="#d99a1a" stroke-width="10"/>
+    <rect x="96" y="88" width="48" height="36" rx="10" fill="#fff" ${o}/><circle cx="120" cy="106" r="11" fill="#bff3ff"/>
+    <path d="M120 88 L100 30 M120 88 L140 30" stroke="rgba(255,255,200,.0)" stroke-width="1"/>`);
+  case 'awa': return W(`<path d="M24 168 C20 70 70 34 120 34 C170 34 220 70 216 168Z" fill="#9fd8ff" ${o}/>
+    <path d="M18 160 Q40 186 62 160 Q84 186 106 160 Q128 186 150 160 Q172 186 194 160 Q212 184 224 160" fill="#9fd8ff" ${o}/>
+    ${[[70,90,22],[122,70,26],[170,100,20],[100,124,16],[150,138,14]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" stroke="#7cb8e0" stroke-width="4"/><circle cx="${x-r*0.35}" cy="${y-r*0.35}" r="${r*0.25}" fill="#e6f6ff"/>`).join('')}`);
+  case 'fuki': return W(`<path d="M20 150 C30 70 210 70 220 150 Z" fill="#ff6b78" ${o}/>
+    <path d="M18 152 C80 172 160 172 222 152 L216 176 C160 194 80 194 24 176Z" fill="#e8484f" ${o}/>
+    ${[[70,110],[120,96],[170,112],[96,138],[146,140]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="9" fill="#fff"/>`).join('')}
+    <path d="M214 166 l24 -8 l-6 22z M214 170 l20 18 l-24 4z" fill="#e8484f" ${o}/>`);
+  case 'cho': return W(`<path d="M24 176 Q120 130 216 176" stroke="#3e9a4f" stroke-width="12" fill="none" stroke-linecap="round"/>
+    ${[[30,170,'#ff8fb1'],[74,152,'#ffd34d'],[120,146,'#b48cff'],[166,152,'#fff'],[210,170,'#ff8fb1']].map(([x,y,c])=>`<g transform="translate(${x} ${y})">${[0,72,144,216,288].map(r=>`<ellipse rx="11" ry="17" cy="-14" fill="${c}" stroke="${k}" stroke-width="3.5" transform="rotate(${r})"/>`).join('')}<circle r="8" fill="#ffb020" stroke="${k}" stroke-width="3"/></g>`).join('')}
+    ${[[52,170],[98,150],[144,150],[188,168]].map(([x,y])=>`<ellipse cx="${x}" cy="${y}" rx="10" ry="5" fill="#5cbc6a" transform="rotate(-30 ${x} ${y})"/>`).join('')}`);
+  }
+  return null;
+}
+const HAT_FIT={ yura:[1.55,0.62], pita:[1.45,0.8], fuse:[1.6,0.66], catch:[1.9,0.55], shabon:[1.35,0.62], mogura:[1.5,0.6], awa:[1.5,0.6], fuki:[1.5,0.5], cho:[1.6,0.42] };   // はば の ばいりつ、たかさ の ずらし
+const HAT={ x:0, y:0, w:0, a:0, ok:false, spark:0, lastStars:0 };
+let _hatImgs={};
+function drawHat(dt){
+  const m=SET.mode, fit=HAT_FIT[m]; if(!fit || SET.hat===false) return;
+  const b=G.body; if(!b){ HAT.ok=false; return; }
+  const P=b.P, n=P[0]; if(!n || n.v<0.4) return;
+  let L=P[7], R=P[8]; let ew, cx, cy, ang;
+  if(L && R && L.v>0.3 && R.v>0.3){ if(R.x<L.x){ const t=L; L=R; R=t; } ew=Math.hypot(R.x-L.x,R.y-L.y); cx=(L.x+R.x)/2; cy=(L.y+R.y)/2; ang=Math.atan2(R.y-L.y,R.x-L.x); }
+  else { ew=b.shW*0.42; cx=n.x; cy=n.y-ew*0.15; ang=0; }
+  const nsd=Math.hypot(n.x-b.shMid.x, n.y-b.shMid.y);
+  ew=Math.max(ew*1.1, b.shW*0.55, nsd*0.85);                                // あたま の はば（いちばん たしか な もの）
+  if(Math.abs(ang)>0.6) ang=0;
+  const tx=cx + Math.sin(ang)*ew*0.85, ty=Math.min(cy,n.y) - Math.cos(ang)*ew*0.85;   // あたま の てっぺん
+  const k=HAT.ok ? 1-Math.exp(-dt/0.08) : 1;
+  HAT.x=lerp(HAT.x,tx,k); HAT.y=lerp(HAT.y,ty,k); HAT.w=lerp(HAT.w,ew,k); HAT.a=lerp(HAT.a,ang,k); HAT.ok=true;
+  if(G.stars>HAT.lastStars) HAT.spark=now(); HAT.lastStars=G.stars;
+  if(!_hatImgs[m]){ const sv=hatSVG(m); if(!sv) return; _hatImgs[m]=new Image(); _hatImgs[m].src=svgURL(sv); }
+  const im=_hatImgs[m]; if(!im.complete || !im.naturalWidth) return;
+  const sp=now()-HAT.spark, pop = sp<0.5 ? 1+0.18*Math.sin(sp/0.5*Math.PI) : 1;
+  const w=HAT.w*fit[0]*1.05*pop, h=w*200/240;
+  ctx.save(); ctx.translate(HAT.x,HAT.y); ctx.rotate(HAT.a);
+  ctx.drawImage(im,-w/2,-h+h*fit[1]*0.55,w,h);
+  if(sp<1.1){ const a=1-sp/1.1;
+    for(let i=0;i<8;i++){ const an=i/8*Math.PI*2+sp*2, r=w*(0.55+sp*0.35);
+      ctx.globalAlpha=a; ctx.fillStyle=['#ffd34d','#fff','#ff9fc0'][i%3]; ctx.save(); ctx.translate(Math.cos(an)*r, -h*0.35+Math.sin(an)*r*0.6); ctx.rotate(sp*5);
+      ctx.beginPath(); for(let j=0;j<10;j++){ const rr=j%2?w*0.03:w*0.07, aa=j*Math.PI/5-Math.PI/2; ctx[j?'lineTo':'moveTo'](Math.cos(aa)*rr,Math.sin(aa)*rr); } ctx.closePath(); ctx.fill(); ctx.restore(); } }
+  ctx.restore();
+}
+
+/* =========================================================================
+   9-i. ピタッと ストップ：おんがく の あいだ の ダンス の おてほん（はんてい なし）
+   ========================================================================= */
+const DANCE_P={
+  stand :{ el:[[-0.3,-0.72],[0.3,-0.72]], hn:[[-0.34,-0.46],[0.34,-0.46]], kn:[[-0.13,-0.28],[0.13,-0.28]], ft:[[-0.14,0],[0.14,0]], lean:0 },
+  clap  :{ el:[[-0.32,-0.8],[0.32,-0.8]], hn:[[-0.04,-0.95],[0.04,-0.95]], kn:[[-0.13,-0.28],[0.13,-0.28]], ft:[[-0.14,0],[0.14,0]], lean:0 },
+  clapU :{ el:[[-0.3,-1.22],[0.3,-1.22]], hn:[[-0.05,-1.62],[0.05,-1.62]], kn:[[-0.13,-0.28],[0.13,-0.28]], ft:[[-0.14,0],[0.14,0]], lean:0 },
+  banzai:{ el:[[-0.32,-1.25],[0.32,-1.25]], hn:[[-0.44,-1.56],[0.44,-1.56]], kn:[[-0.13,-0.28],[0.13,-0.28]], ft:[[-0.14,0],[0.14,0]], lean:0 },
+  wingL :{ el:[[-0.5,-1.02],[0.48,-0.98]], hn:[[-0.76,-1.12],[0.74,-0.88]], kn:[[-0.15,-0.28],[0.11,-0.28]], ft:[[-0.16,0],[0.12,0]], lean:-0.16 },
+  wingR :{ el:[[-0.48,-0.98],[0.5,-1.02]], hn:[[-0.74,-0.88],[0.76,-1.12]], kn:[[-0.11,-0.28],[0.15,-0.28]], ft:[[-0.12,0],[0.16,0]], lean:0.16 },
+  marchL:{ el:[[-0.3,-0.85],[0.32,-0.68]], hn:[[-0.18,-1.02],[0.4,-0.44]], kn:[[-0.16,-0.52],[0.13,-0.28]], ft:[[-0.14,-0.3],[0.14,0]], lean:0 },
+  marchR:{ el:[[-0.32,-0.68],[0.3,-0.85]], hn:[[-0.4,-0.44],[0.18,-1.02]], kn:[[-0.13,-0.28],[0.16,-0.52]], ft:[[-0.14,0],[0.14,-0.3]], lean:0 },
+  wave  :{ el:[[-0.36,-0.74],[0.42,-1.2]], hn:[[-0.22,-0.58],[0.6,-1.48]], kn:[[-0.13,-0.28],[0.13,-0.28]], ft:[[-0.14,0],[0.14,0]], lean:0.05 },
+  wave2 :{ el:[[-0.36,-0.74],[0.42,-1.2]], hn:[[-0.22,-0.58],[0.32,-1.52]], kn:[[-0.13,-0.28],[0.13,-0.28]], ft:[[-0.14,0],[0.14,0]], lean:0.05 },
+  shake :{ el:[[-0.42,-0.9],[0.42,-0.9]], hn:[[-0.5,-1.18],[0.5,-1.18]], kn:[[-0.15,-0.26],[0.15,-0.26]], ft:[[-0.16,0],[0.16,0]], lean:0 },
+  shake2:{ el:[[-0.46,-0.95],[0.46,-0.95]], hn:[[-0.62,-1.1],[0.62,-1.1]], kn:[[-0.15,-0.26],[0.15,-0.26]], ft:[[-0.16,0],[0.16,0]], lean:0 }
+};
+const DANCE_BARS=[
+  ['clap','stand','clap','stand','banzai','stand','banzai','stand'],
+  ['wingL','wingR','wingL','wingR','marchL','marchR','marchL','marchR'],
+  ['wave','wave2','wave','wave2','shake','shake2','shake','shake2'],
+  ['clapU','stand','clapU','stand','marchL','marchR','banzai','stand']
+];
+function drawDancer(x,gy,s,beatPos,frozen){
+  const g=ctx, KC=VK;
+  const bi=Math.floor(beatPos), fr=beatPos-bi, bar=DANCE_BARS[Math.floor(bi/8)%DANCE_BARS.length], nb=DANCE_BARS[Math.floor((bi+1)/8)%DANCE_BARS.length];
+  const A=DANCE_P[bar[bi%8]], B=DANCE_P[nb[(bi+1)%8]];
+  const e = frozen ? 0 : (fr<0.55 ? 0 : (fr-0.55)/0.45), k=e*e*(3-2*e);     // はく の あたま で ポーズ、うしろ で つぎ へ
+  const L=(a,b)=>[a[0]+(b[0]-a[0])*k, a[1]+(b[1]-a[1])*k];
+  const bob = frozen ? 0 : Math.abs(Math.sin(beatPos*Math.PI))*s*0.05;
+  g.save(); g.translate(x,gy); g.lineCap='round'; g.lineJoin='round';
+  g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(0,0,s*0.38,s*0.07,0,0,7); g.fill();
+  g.translate(0,-bob); g.rotate((A.lean+(B.lean-A.lean)*k));
+  const P=q=>[q[0]*s,q[1]*s], hip=[0,-0.55*s], sh=[[-0.2*s,-0.98*s],[0.2*s,-0.98*s]];
+  for(const i of [0,1]){ const kn=P(L(A.kn[i],B.kn[i])), ft=P(L(A.ft[i],B.ft[i])), hx=(i?1:-1)*0.11*s;
+    g.strokeStyle=KC; g.lineWidth=s*0.17; g.beginPath(); g.moveTo(hx,hip[1]); g.lineTo(kn[0],kn[1]); g.lineTo(ft[0],ft[1]); g.stroke();
+    g.strokeStyle='#4a6fd8'; g.lineWidth=s*0.12; g.beginPath(); g.moveTo(hx,hip[1]); g.lineTo(kn[0],kn[1]); g.lineTo(ft[0],ft[1]); g.stroke();
+    g.fillStyle='#fff'; g.strokeStyle=KC; g.lineWidth=s*0.03; g.beginPath(); g.ellipse(ft[0]+(i?1:-1)*s*0.04,ft[1],s*0.09,s*0.05,0,0,7); g.fill(); g.stroke(); }
+  g.fillStyle='#ffb02e'; g.strokeStyle=KC; g.lineWidth=s*0.045; rrPath(g,-s*0.25,-s*1.0,s*0.5,s*0.51,s*0.16); g.fill(); g.stroke();
+  g.fillStyle='#fff'; g.font=`900 ${s*0.17}px ${FF}`; g.textAlign='center'; g.textBaseline='middle'; g.fillText('♪',0,-s*0.74);
+  for(const i of [0,1]){ const el=P(L(A.el[i],B.el[i])), hn=P(L(A.hn[i],B.hn[i]));
+    g.strokeStyle=KC; g.lineWidth=s*0.15; g.beginPath(); g.moveTo(sh[i][0],sh[i][1]); g.lineTo(el[0],el[1]); g.lineTo(hn[0],hn[1]); g.stroke();
+    g.strokeStyle='#ffb02e'; g.lineWidth=s*0.1; g.beginPath(); g.moveTo(sh[i][0],sh[i][1]); g.lineTo(el[0],el[1]); g.lineTo(hn[0],hn[1]); g.stroke();
+    g.fillStyle='#f6c9a0'; g.strokeStyle=KC; g.lineWidth=s*0.03; g.beginPath(); g.arc(hn[0],hn[1],s*0.075,0,7); g.fill(); g.stroke(); }
+  const hy=-1.3*s, hr=s*0.3;
+  g.fillStyle='#f6c9a0'; g.strokeStyle=KC; g.lineWidth=s*0.045; g.beginPath(); g.arc(0,hy,hr,0,7); g.fill(); g.stroke();
+  g.fillStyle='#3a2a20'; g.beginPath(); g.arc(0,hy-hr*0.15,hr*1.02,Math.PI*1.02,Math.PI*1.98); g.fill();
+  g.fillStyle='#e8484f'; g.beginPath(); g.ellipse(0,hy-hr*0.78,hr*0.85,hr*0.28,0,Math.PI,0); g.fill(); g.lineWidth=s*0.03; g.stroke();     // キャップ
+  g.beginPath(); g.ellipse(hr*0.55,hy-hr*0.7,hr*0.5,hr*0.13,0.1,0,7); g.fill(); g.stroke();
+  g.fillStyle=KC; if(frozen){ g.beginPath(); g.arc(-hr*0.35,hy+hr*0.08,hr*0.1,0,7); g.arc(hr*0.35,hy+hr*0.08,hr*0.1,0,7); g.fill(); g.lineWidth=s*0.03; g.strokeStyle=KC; g.beginPath(); g.moveTo(-hr*0.2,hy+hr*0.42); g.lineTo(hr*0.2,hy+hr*0.42); g.stroke(); }
+  else { g.lineWidth=s*0.035; g.strokeStyle=KC; g.beginPath(); g.arc(-hr*0.35,hy+hr*0.16,hr*0.12,Math.PI*1.1,Math.PI*1.9); g.stroke(); g.beginPath(); g.arc(hr*0.35,hy+hr*0.16,hr*0.12,Math.PI*1.1,Math.PI*1.9); g.stroke();
+    g.fillStyle='#5a2340'; g.beginPath(); g.arc(0,hy+hr*0.34,hr*0.26,0.05,Math.PI-0.05); g.closePath(); g.fill(); }
+  g.fillStyle='#ff9fb3'; g.beginPath(); g.ellipse(-hr*0.6,hy+hr*0.35,hr*0.14,hr*0.09,0,0,7); g.ellipse(hr*0.6,hy+hr*0.35,hr*0.14,hr*0.09,0,0,7); g.fill();
+  g.restore();
+}
+function pitaDancer(){
+  const P=X.p; if(P.phase==='stop') return;
+  const u=Math.min(CW,CH), s=Math.min(CH*0.3, CW*0.17), x=CW*0.82, gy=CH*0.9;
+  const bd=beatDur(), bp = (ac && G.t0) ? (ac.currentTime-G.t0)/bd : now()*2;
+  const dancing = P.phase==='move';
+  drawDancer(x,gy,s, dancing?bp:0, !dancing);
+  // ふきだし
+  const fs=Math.max(15,u*0.032), tx = dancing ? 'いっしょに おどろう ♪' : 'おんがくを まってね', w=fs*tx.length*0.92+fs, bx=x-w/2, by=gy-s*2.15;
+  ctx.save(); ctx.fillStyle='rgba(255,255,255,.95)'; rrPath(ctx,bx,by,w,fs*1.7,fs*0.85); ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle=VK; ctx.stroke();
+  ctx.fillStyle = dancing ? '#e8487a' : VK; ctx.font=`900 ${fs}px ${FF}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(tx,x,by+fs*0.86);
+  ctx.font=`900 ${Math.max(12,u*0.022)}px ${FF}`; ctx.fillStyle='#fff'; ctx.strokeStyle=VK; ctx.lineWidth=4; ctx.strokeText('おてほん',x,gy+u*0.03); ctx.fillText('おてほん',x,gy+u*0.03);
+  if(dancing){ const t=now(); ctx.font=`${u*0.05}px sans-serif`; for(let i=0;i<3;i++){ const a=(t*0.8+i/3)%1; ctx.globalAlpha=1-a; ctx.fillText(['♪','♫','♪'][i], x+s*(0.75+i*0.2)*(i%2?-1:1), gy-s*0.9-a*s*0.7); } }
+  ctx.restore();
+}
+
+/* =========================================================================
+   9-j. おわり の がめん：きみ が よろこぶ・スター が とぶ・かみふぶき
+   ========================================================================= */
+const RFX={ on:false, raf:0, stars:[], conf:[], t0:0, mood:'good', lastT:0 };
+function rfxStart(okIdx, mood){
+  const c=$('#rFx'); if(!c) return;
+  RFX.on=true; RFX.stars=[]; RFX.conf=[]; RFX.t0=now(); RFX.mood=mood; RFX.lastT=now();
+  cancelAnimationFrame(RFX.raf);
+  const loop=()=>{ if(!RFX.on || $('#resultScreen').classList.contains('hidden')){ RFX.on=false; return; } RFX.raf=requestAnimationFrame(loop); rfxDraw(); };
+  loop();
+}
+function rfxAv(){ const W=innerWidth, H=innerHeight; const s=Math.min(H*0.24, W*0.13); return { x: W<760 ? W*0.12 : W*0.13, gy:H*0.93, s }; }
+function rfxLaunch(slotEl, onArrive){
+  const A=rfxAv(), r=slotEl.getBoundingClientRect();
+  RFX.stars.push({ x0:A.x+A.s*0.4, y0:A.gy-A.s*1.6, x1:r.left+r.width/2, y1:r.top+r.height/2, t:0, dur:0.6, onArrive, done:false, s:r.width*0.42 });
+}
+function rfxConfetti(n){
+  const W=innerWidth; for(let i=0;i<n;i++) RFX.conf.push({ x:Math.random()*W, y:-20-Math.random()*200, vx:(Math.random()-0.5)*80, vy:120+Math.random()*160, r:Math.random()*6, vr:(Math.random()-0.5)*10,
+    w:8+Math.random()*8, h:4+Math.random()*6, c:pick(['#ffd34d','#ff6b9a','#7cc0ff','#9be0b0','#c9b2ff','#ffb877','#fff']) });
+}
+function rfxDraw(){
+  const c=$('#rFx'), dpr=Math.min(2,devicePixelRatio||1), W=innerWidth, H=innerHeight;
+  if(c.width!==Math.round(W*dpr)||c.height!==Math.round(H*dpr)){ c.width=Math.round(W*dpr); c.height=Math.round(H*dpr); }
+  const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+  const t=now(), dt=Math.min(0.05,t-RFX.lastT); RFX.lastT=t; const el=t-RFX.t0;
+  // きみ（よろこぶ）
+  const A=rfxAv(), flying=RFX.stars.some(s=>!s.done), good=RFX.mood!=='low';
+  const j = good ? Math.max(0,Math.sin(el*(flying?7:5)))*(flying?0.6:1) : Math.max(0,Math.sin(el*3))*0.25;
+  bmAvatar(A.x,A.gy,A.s, 0, good?j:j, { ctx:g });
+  // ふきだし
+  const fs=Math.max(15,A.s*0.13), tx = good ? (flying ? 'スター ゲット！' : 'やったー！') : 'がんばったね！';
+  g.font=`900 ${fs}px ${FF}`; const tw=g.measureText(tx).width+fs*1.2, bx=A.x-tw/2, by=A.gy-A.s*2.25-j*A.s*0.36;
+  g.fillStyle='#fff'; rrPath(g,bx,by,tw,fs*1.7,fs*0.85); g.fill(); g.lineWidth=3; g.strokeStyle=VK; g.stroke();
+  g.fillStyle='#e8487a'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(tx,A.x,by+fs*0.86);
+  // とんで いく スター
+  for(const s of RFX.stars){ if(s.done) continue; s.t+=dt; const k=Math.min(1,s.t/s.dur), e=1-Math.pow(1-k,2);
+    const x=lerp(s.x0,s.x1,e), y=lerp(s.y0,s.y1,e)-Math.sin(k*Math.PI)*H*0.18, sz=s.s*(0.6+0.4*k);
+    for(let i=1;i<5;i++){ const k2=Math.max(0,k-i*0.05), e2=1-Math.pow(1-k2,2); g.globalAlpha=0.25*(1-i/5); g.fillStyle='#ffd34d'; g.beginPath(); g.arc(lerp(s.x0,s.x1,e2), lerp(s.y0,s.y1,e2)-Math.sin(k2*Math.PI)*H*0.18, sz*0.35, 0, 7); g.fill(); }
+    g.globalAlpha=1; g.save(); g.translate(x,y); g.rotate(k*6);
+    g.fillStyle='#ffd34d'; g.strokeStyle='#fff'; g.lineWidth=4; g.beginPath(); for(let i=0;i<10;i++){ const r=i%2?sz*0.45:sz, a=i*Math.PI/5-Math.PI/2; g[i?'lineTo':'moveTo'](Math.cos(a)*r,Math.sin(a)*r); } g.closePath(); g.fill(); g.stroke(); g.restore();
+    if(k>=1){ s.done=true; try{ s.onArrive && s.onArrive(); }catch(e){} } }
+  // かみふぶき
+  for(const p of RFX.conf){ p.x+=p.vx*dt+Math.sin(t*3+p.r*7)*0.6; p.y+=p.vy*dt; p.r+=p.vr*dt;
+    g.save(); g.translate(p.x,p.y); g.rotate(p.r); g.fillStyle=p.c; g.fillRect(-p.w/2,-p.h/2,p.w,p.h*Math.abs(Math.cos(t*4+p.r))); g.restore(); }
+  RFX.conf=RFX.conf.filter(p=>p.y<H+30);
+}
+
 xReset();                                    // はじめる まえ から からっぽ の じょうたい を つくって おく
 
 /* ---- まとめ：1こま ごと に よぶ ---- */
@@ -5416,7 +5613,7 @@ function xTick(dt){
 function xDraw(){
   if(SET.mode==='kake'){ kakeDraw(); return; }
   if(SET.mode==='beam'){ beamDraw(); return; }
-  if(SET.mode==='yura') yuraDraw(); else if(SET.mode==='pita') pitaDraw();
+  if(SET.mode==='yura') yuraDraw(); else if(SET.mode==='pita'){ pitaDancer(); pitaDraw(); }
   else if(SET.mode==='fuse') fuseDraw(); else if(SET.mode==='shabon') shabonDraw();
   else if(SET.mode==='fuki') fkDraw(); else if(SET.mode==='cho') choDraw(); else if(SET.mode==='reach') reachDraw();
   else if(SET.mode==='awa') awaDraw();
@@ -6361,6 +6558,7 @@ function frame(){
   // --- タッチ／キャッチ：まと や フルーツ を えがいて、お手本の 人型 は ださない ---
   if(SET.mode==='touch' || SET.mode==='catch' || isX()){
     if(SET.mode==='touch') drawTargets(); else if(SET.mode==='catch') drawFruits(); else xDraw();
+    if(G.judgeOn && G.running && (isX() || SET.mode==='catch') && SET.mode!=='fuki') drawHat(dt);
     if(G.judgeOn && G.running && !G.body){
       const waiting = PAUSE.on && PAUSE.why==='body';
       notice(waiting ? '👀 からだ が うつると、つづき から はじまるよ'
@@ -6820,14 +7018,22 @@ function showSummary(){
   const SC=['#ffd34d','#ff9fc0','#8fd3ff','#9be0b0','#ffb877','#c9b2ff'];
   const okIdx=[]; G.log.forEach((r,i)=>{ if(r.ok) okIdx.push(i); });
   clearTimeout(showSummary._t); (showSummary._ts||[]).forEach(clearTimeout); showSummary._ts=[];
+  const ratio0 = total ? okIdx.length/total : 0;
+  setTimeout(()=>rfxStart(okIdx, ratio0>=0.4?'good':'low'), 30);
+  const gapS=Math.max(220, Math.min(380, 3000/Math.max(1,okIdx.length)));
   okIdx.forEach((i,j)=>{
     showSummary._ts.push(setTimeout(()=>{
       const el=box.children[j]; if(!el) return;
-      el.classList.add('on'); if(j===okIdx.length-1 && okIdx.length>1) el.classList.add('big');
-      el.innerHTML='<img alt="" style="--rot:'+((j*37)%17-8)+'deg" src="'+svgURL(CAL_STAR)+'">';
-      if(ac){ const t=ac.currentTime; tone(523.25*Math.pow(2,(j%8)/12*2),t,0.16,'sine',0.16); tone(1046.5*Math.pow(2,(j%8)/12*2),t+0.03,0.1,'sine',0.06); }
-    }, 450+j*Math.max(160, Math.min(320, 2600/Math.max(1,okIdx.length)))));
+      if(ac){ const t=ac.currentTime; sweep(600,1200,t,0.18,'sine',0.05); }
+      rfxLaunch(el, ()=>{
+        el.classList.add('on'); if(j===okIdx.length-1 && okIdx.length>1) el.classList.add('big');
+        el.innerHTML='<img alt="" style="--rot:'+((j*37)%17-8)+'deg" src="'+svgURL(CAL_STAR)+'">';
+        if(ac){ const t=ac.currentTime; tone(523.25*Math.pow(2,(j%8)/12*2),t,0.16,'sine',0.16); tone(1046.5*Math.pow(2,(j%8)/12*2),t+0.03,0.1,'sine',0.06); }
+        if(j===okIdx.length-1){ rfxConfetti(ratio0>=1?160:90); if(ac){ const t=ac.currentTime; [784,988,1175,1568].forEach((f,q)=>tone(f,t+0.15+q*0.08,0.3,'triangle',0.14)); } }
+      });
+    }, 500+j*gapS));
   });
+  if(!okIdx.length) setTimeout(()=>rfxConfetti(40), 600);
 
   // ポーズごとの きろく
   $('#rTally').innerHTML = G.log.map((r,i)=>{
@@ -6853,7 +7059,7 @@ function showSummary(){
   $('#rMsg').textContent = msg;
 
   $('#resultScreen').classList.remove('hidden');
-  if(ac){ const t=ac.currentTime; SFX.great(t); setTimeout(()=>burst(80), 60); }
+  if(ac){ const t=ac.currentTime; SFX.great(t); }
   try{ speechSynthesis.cancel(); }catch(e){}     // けっか の がめん は よみあげ なし（おと だけ）
   bgmCut();
 }
@@ -7408,7 +7614,8 @@ loadVoices();
 $('#voiceSel').addEventListener('change', e=>{ SET.voiceName=e.target.value; saveSet(); loadVoices(); });
 $('#voiceTry').addEventListener('click', ()=>{ warmUpSpeech(); const v=SET.voice; SET.voice=true;
   speak('つぎは、 バンザイ！ てを うえに あげてね'); SET.voice=v; });
-tog('#tVoice','voice'); tog('#tGuide','guide'); tog('#tSkel','skeleton'); tog('#tLR','lr');
+if(SET.hat===undefined) SET.hat=true;
+tog('#tHat','hat'); tog('#tVoice','voice'); tog('#tGuide','guide'); tog('#tSkel','skeleton'); tog('#tLR','lr');
 const mt=$('#tMirrorTxt'); mt.classList.add('on');
 mt.addEventListener('click',()=>{
   alert('このアプリは、いつも鏡（ミラー）のように映ります。\n\n画面と同じ側の手を動かせばOKです。\n（左右を頭の中で入れかえる必要はありません）');
