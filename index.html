@@ -4315,49 +4315,66 @@ function choDone(ok){
           const p=choSpotXY(C.target); xSpark(p.x,p.y,18,['#ffffff','#ffd0e0','#fff3a8',CHO_COL[C.target]],320); }
   if(xFinish('cho', ok)) return;
 }
+// ちょうちょ：かお を むけて いる あいだ、ちょうちょ が じぶん で おはな へ とんで いく（ぴったり あわせ なくて いい）
+const CHO_LV={ easy:{ thr:0.045, travel:1.3, sec:0 }, normal:{ thr:0.075, travel:1.7, sec:30 }, hard:{ thr:0.11, travel:2.2, sec:20 } };
 function choTick(dt){
-  const C=X.c, L=xlv(), c=choCenter();
-  // ① まっすぐ の しせい を はかる
+  const C=X.c, L=xlv(), c=choCenter(), CL=CHO_LV[SET.level]||CHO_LV.normal;
+  const b=G.body, unit=(XB.u||100)/1.25;
+  // ① まっすぐ の しせい を はかる（かお の むき ＋ からだ の いち）
   if(G.judgeOn && C.base===null){
-    const h=choHead(); if(h) C.cal.push(h);
+    const h=choHead(); if(h && b) C.cal.push({ x:h.x, y:h.y, ax:b.shMid.x, ay:b.shMid.y });
     if(XT < 1.4 || C.cal.length < 10){ C.bx=c.x; C.by=c.y; return; }
-    const med=k=>C.cal.map(o=>o[k]).sort((a,b)=>a-b)[C.cal.length>>1];
-    C.base={ x:med('x'), y:med('y') };
+    const med=k=>C.cal.map(o=>o[k]).sort((a,q)=>a-q)[C.cal.length>>1];
+    C.base={ x:med('x'), y:med('y'), ax:med('ax'), ay:med('ay') };
+    speak('じゅんび OK！', 1.05, 1.3);
   }
-  if(!C.stage){ if(XT>=C.nextAt) choNext(); }
-  // ② ちょうちょ の いち
-  let tx=C.bx, ty=C.by;
-  if(G.judgeOn){
+  if(!C.stage){ if(XT>=C.nextAt){ choNext(); C.prog=0; } }
+  // ② いま の むき（かお を よこ に むける・くび を かしげる・からだ ごと よる、の どれ でも）
+  let vx=0, vy=0;
+  if(G.judgeOn && C.base){
     const h=choHead();
-    if(h){
-      const T=L.cT/judgeHit();
-      const dx=(h.x-C.base.x)/T, dy=(h.y-C.base.y)/(T*0.6);
-      tx=c.x+clamp(dx,-1.25,1.25)*CW*0.32; ty=c.y+clamp(dy,-1.25,1.0)*CH*0.34;
-      // おはな が ない あいだ、まんなか ちかく なら「まっすぐ」を ゆっくり あわせなおす
-      if(C.stage!=='go' && Math.abs(dx)<0.3 && Math.abs(dy)<0.3){ const a=1-Math.exp(-dt/3); C.base.x=lerp(C.base.x,h.x,a); C.base.y=lerp(C.base.y,h.y,a); }
+    if(h && b){
+      const rx=h.x-C.base.x, ry=h.y-C.base.y, ax=clamp((b.shMid.x-C.base.ax)/unit,-0.4,0.4), ay=clamp((b.shMid.y-C.base.ay)/unit,-0.4,0.4);
+      vx = rx + ax*0.6;                                              // かお の むき ＋ からだ の よせ
+      vy = ry + ay*0.5;
+      const reb=(tau)=>{ const a=1-Math.exp(-dt/tau); C.base.x=lerp(C.base.x,h.x,a); C.base.y=lerp(C.base.y,h.y,a); C.base.ax=lerp(C.base.ax,b.shMid.x,a); C.base.ay=lerp(C.base.ay,b.shMid.y,a); };
+      if(C.stage!=='go' && Math.abs(vx)<0.16 && Math.abs(vy)<0.16) reb(1.2);
+      // ぎゃく の ほう へ ずっと ずれて いる ＝「まっすぐ」が ずれた。すこし ずつ なおす
+      if(C.stage==='go'){ const d=CHO_SPOTS[C.target], v=d.y<0?-vy:d.x*vx;
+        C.wrongT = v < -0.04 ? (C.wrongT||0)+dt : 0; if(C.wrongT>3) reb(2.0); }
     }
-  }else if(C.ptr){ tx=C.ptr.x; ty=C.ptr.y; }
-  // おてつだい：ただしい ほう へ すこし でも うごいたら、ちょうちょ が おはな へ すいよせられる
-  if(C.stage==='go' && G.judgeOn){
-    const p=choSpotXY(C.target), vx=p.x-c.x, vy=p.y-c.y, d2=vx*vx+vy*vy||1;
-    const k=((tx-c.x)*vx+(ty-c.y)*vy)/d2;                 // 0＝まんなか、1＝おはな
-    const pull=clamp((k-0.25)/0.45,0,1)*(L.cAs||0.5);
-    tx=lerp(tx,p.x,pull); ty=lerp(ty,p.y,pull);
   }
-  const a=1-Math.exp(-dt*6); C.bx=lerp(C.bx,tx,a); C.by=lerp(C.by,ty,a);
-  C.dir = lerp(C.dir||0, clamp((tx-C.bx)/60,-1,1), 1-Math.exp(-dt*5));
-  // ③ はな の うえ で とまる
+  C.vx=lerp(C.vx||0,vx,1-Math.exp(-dt/0.12)); C.vy=lerp(C.vy||0,vy,1-Math.exp(-dt/0.12));
+  let tx=c.x, ty=c.y;
   if(C.stage==='go'){
-    const p=choSpotXY(C.target), r=Math.min(CW,CH)*0.16*judgeHit();
-    const near=Math.hypot(C.bx-p.x,C.by-p.y) < r;
-    C.hold = near ? C.hold+dt : Math.max(0,C.hold-dt*0.5);
-    if(near && ac && XT>=(C.tickAt||0)){ C.tickAt=XT+0.3; tone(1046.5+C.hold*600,ac.currentTime,0.08,'sine',0.06); }
-    if(C.hold>=L.cHold) choDone(true);
-    else if(XT-C.t0 > L.cSec) choDone(false);
-    else if(XT-C.t0 > L.cSec*0.35 && !C.hintT){ C.hintT=1; bigText('かお を '+CHO_SPOTS[C.target].name+' へ','#fff'); speak('かおを '+CHO_SPOTS[C.target].name+' へ'); }
-  }else if(C.stage==='bloom' || C.stage==='gap'){
-    if(XT-C.t1 > 1.6){ C.stage=null; C.nextAt=XT+0.4; }
+    const p=choSpotXY(C.target), el=XT-C.t0;
+    if(G.judgeOn){
+      const d=CHO_SPOTS[C.target];
+      const val = d.y<0 ? -C.vy*1.4 : d.x*C.vx;                       // ただしい ほう へ どれ だけ むいて いる か
+      const thr = CL.thr/judgeHit() * Math.max(0.45, 1-el/14);         // じかん が たつ と だんだん かんたん に
+      C.look = clamp(val/thr,0,1.5);
+      if(val>=thr) C.prog = Math.min(1, (C.prog||0) + dt/CL.travel*(val>=thr*1.6?1.3:1));
+      else C.prog = Math.max(0, (C.prog||0) - dt*0.12);                // もどして も すこし ずつ しか へらない
+      const ease=C.prog*C.prog*(3-2*C.prog);
+      tx=lerp(c.x,p.x,ease); ty=lerp(c.y,p.y,ease)-Math.sin(ease*Math.PI)*CH*0.08;
+      if(C.prog>0 && C.prog<1 && ac && XT>=(C.tickAt||0) && val>=thr){ C.tickAt=XT+0.28; tone(880+C.prog*700,ac.currentTime,0.08,'sine',0.06); }
+      if(C.prog>=1) choDone(true);
+      else if(CL.sec && el>CL.sec) choDone(false);
+      else if(el>5 && !C.hintT && C.prog<0.3){ C.hintT=1; bigText('かお を '+d.name+' へ','#fff'); speak('かおを、 '+d.name+'に むけてね'); }
+    }else{
+      // カメラ なし：ゆび で ちょうちょ を はこぶ
+      if(C.ptr){ tx=C.ptr.x; ty=C.ptr.y; } else { tx=C.bx; ty=C.by; }
+      const r=Math.min(CW,CH)*0.16;
+      const near=Math.hypot(C.bx-p.x,C.by-p.y) < r;
+      C.prog = near ? Math.min(1,(C.prog||0)+dt/0.6) : Math.max(0,(C.prog||0)-dt*0.5);
+      if(C.prog>=1) choDone(true);
+    }
+  }else if(C.stage==='bloom'){
+    const p=choSpotXY(C.target||'L'); tx=p.x; ty=p.y;
   }
+  if(C.stage==='bloom' || C.stage==='gap'){ if(XT-C.t1 > 1.6){ C.stage=null; C.nextAt=XT+0.4; } }
+  const a=1-Math.exp(-dt*5); const px=C.bx; C.bx=lerp(C.bx,tx,a); C.by=lerp(C.by,ty,a);
+  C.dir = lerp(C.dir||0, clamp((C.bx-px)/4,-1,1), 1-Math.exp(-dt*5));
   for(const k in C.bloom) C.bloom[k]=Math.max(0,C.bloom[k]-dt*0.4);
 }
 function choFlower(x,y,s,col,on,bloom){
@@ -4399,9 +4416,28 @@ function choDraw(){
     // みちしるべ の てんてん
     ctx.save(); ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.lineWidth=Math.max(5,m*0.01); ctx.setLineDash([2,18]); ctx.lineCap='round';
     ctx.beginPath(); ctx.moveTo(C.bx,C.by); ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.restore();
-    // とまって いる あいだ の わ
-    if(C.hold>0){ const L=xlv(); ctx.save(); ctx.strokeStyle='#2fa35a'; ctx.lineWidth=Math.max(7,m*0.014); ctx.lineCap='round';
-      ctx.beginPath(); ctx.arc(p.x,p.y,m*0.13,-Math.PI/2,-Math.PI/2+Math.PI*2*clamp(C.hold/L.cHold,0,1)); ctx.stroke(); ctx.restore(); }
+    // すすみぐあい の わ
+    if((C.prog||0)>0){ ctx.save(); ctx.strokeStyle='rgba(255,255,255,.7)'; ctx.lineWidth=Math.max(9,m*0.018); ctx.beginPath(); ctx.arc(p.x,p.y,m*0.13,0,7); ctx.stroke();
+      ctx.strokeStyle='#2fa35a'; ctx.lineWidth=Math.max(7,m*0.014); ctx.lineCap='round';
+      ctx.beginPath(); ctx.arc(p.x,p.y,m*0.13,-Math.PI/2,-Math.PI/2+Math.PI*2*clamp(C.prog,0,1)); ctx.stroke(); ctx.restore(); }
+    // かお の むき の みちびき（まんなか の した）：かお の え と やじるし
+    if(G.judgeOn && C.base){
+      const d=CHO_SPOTS[C.target], gx=CW/2, gy=CH*0.82, r=m*0.06, on=(C.look||0)>=1, t=now();
+      ctx.save(); ctx.fillStyle= on ? 'rgba(47,163,90,.92)' : 'rgba(43,35,64,.82)'; rrPath(ctx,gx-r*3.4,gy-r*1.35,r*6.8,r*2.7,r*1.35); ctx.fill();
+      const tl=clamp((C.vx||0)/0.12,-1,1), tu=clamp(-(C.vy||0)/0.08,-1,1);
+      ctx.translate(gx-r*1.6,gy);
+      ctx.fillStyle='#f6c9a0'; ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#3a2a20'; ctx.beginPath(); ctx.arc(0,-r*0.15,r*1.02,Math.PI*1.05,Math.PI*1.95); ctx.fill();
+      ctx.fillStyle=VK; const ex=tl*r*0.38, ey=-tu*r*0.25;
+      ctx.beginPath(); ctx.arc(-r*0.32+ex,r*0.08+ey,r*0.11,0,7); ctx.arc(r*0.32+ex,r*0.08+ey,r*0.11,0,7); ctx.fill();
+      ctx.strokeStyle=VK; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(ex*0.8,r*0.42+ey,r*0.22,0.2,Math.PI-0.2); ctx.stroke();
+      ctx.restore();
+      // やじるし（いく ほう）
+      ctx.save(); ctx.translate(gx+r*1.4,gy); ctx.rotate(d.y<0 ? -Math.PI/2 : (d.x<0 ? Math.PI : 0));
+      const bob=on?0:Math.sin(t*8)*r*0.25; ctx.translate(bob,0);
+      ctx.fillStyle= on ? '#fff' : '#ffd34d'; ctx.beginPath(); ctx.moveTo(-r*0.9,-r*0.32); ctx.lineTo(r*0.2,-r*0.32); ctx.lineTo(r*0.2,-r*0.72); ctx.lineTo(r*1.0,0); ctx.lineTo(r*0.2,r*0.72); ctx.lineTo(r*0.2,r*0.32); ctx.lineTo(-r*0.9,r*0.32); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
   }
   // かお の いち の しるし（カメラ の とき）
   if(G.judgeOn && G.body && G.body.P[0] && G.body.P[0].v>0.5){
@@ -6983,7 +7019,7 @@ function paintLevels(){
       : SET.mode==='awa' ? ((XL.aSpd<0.3?'ゆっくり':XL.aSpd<0.5?'ふつうの速さ':'速い')+' ／ 同時に'+XL.aMax+'匹'+(XL.aBoss?' ／ ボスも出ます':''))
       : SET.mode==='shabon' ? ((XL.sRise>=8?'ゆっくり':XL.sRise>=6?'ふつうの速さ':'速い')+' ／ 同時に'+XL.sMax+'個まで')
       : SET.mode==='fuki' ? '手を大きく動かして窓をふきます'
-      : SET.mode==='cho' ? ('顔の向きで ちょうちょを動かします'+(SET.level==='hard'?' ／ 上の花もあり':''))
+      : SET.mode==='cho' ? ({easy:'少し顔を向けるだけでOK ／ 時間制限なし',normal:'顔を向けるとちょうちょが飛びます',hard:'しっかり顔を向ける ／ 上の花もあり'}[SET.level]||'顔を向けるとちょうちょが飛びます')
       : ('顔を出す時間 '+XL.mUp+'秒 ／ 同時に'+XL.mMax+'匹');
   }else if(SET.mode==='catch'){
     const sp = L.cFall>=4.5?'ゆっくり落ちる' : L.cFall>=3?'ふつうの速さ' : '速く落ちる';
@@ -7134,8 +7170,8 @@ const MODE_INFO = {
          lv:'ふく広さ・時間の目安が変わります。出てくる絵は月ごとに変わります（⚙️で変更可）', say:'「きゅっきゅっ、まどを ふいたら なにが でるかな？」',
          care:'「手の届く範囲」を測ると、届く範囲だけで遊べます' },
   cho:{ sit:1, stand:0, aim:'首の回旋（左右を向く）、頭部のコントロール', part:'頭（顔の向き）',
-         lv:'やさしい：少し向けばOK ／ むずかしい：上の花もあり、長めに見つめる', say:'「ちょうちょさん、おはなの ほうを みて つれていこう」',
-         care:'体は動かさず、顔の向きだけで遊べます。座位でじっくり取り組めます' }
+         lv:'顔を向けている間、ちょうちょが自分で花へ飛びます。やさしい：少し向けばOK・時間制限なし ／ むずかしい：しっかり向ける・上の花もあり', say:'「ちょうちょさん、おはなの ほうを みて つれていこう」',
+         care:'顔を向けられないときは、体ごと横に寄っても進みます。途中で前を向いても進んだ分は少ししか戻らず、時間がたつほど判定がやさしくなります' }
 };
 let infoMode=null;
 function openInfo(k){
