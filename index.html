@@ -22,7 +22,7 @@
   ・効果音・リズム音は Web Audio API で生成、音声ガイドは Web Speech API。
   ・画像/音声などの外部アセットは一切使いません（お手本キャラもCanvas描画）。
   ----------------------------------------------------------------------------
-  【先生へ・調整しやすい場所】
+  【大人へ・調整しやすい場所】
    1) LEVELS ... むずかしさ3段階の中身（キープ秒・的の大きさ・落ちる速さ など）
    2) POSES  ... ポーズの定義（名前・かけ声・判定式・的の表示）
    3) CONFIG.defaults ... 音量・回数・モードなどの初期値
@@ -666,7 +666,7 @@
 <div class="screen floor" id="startScreen">
   <div class="topbtns">
     <button class="tbtn" id="helpBtn">❓ 使い方</button>
-    <button class="tbtn" id="tSetBtn">⚙️ 先生の設定</button>
+    <button class="tbtn" id="tSetBtn">⚙️ 大人の設定</button>
   </div>
   <div class="hero">
     <p class="kicker">モニターゾーン ｜ すわった まま でも たった まま でも あそべるよ</p>
@@ -746,7 +746,7 @@
   <div class="rslots" id="rStars"></div>
   <p class="rscore"><span id="rTotal">10</span>かい ちゅう <b id="rNum">0</b>かい できたよ！</p>
   <p class="sub" id="rMsg"></p>
-  <details class="rlog"><summary>先生向け：1回ずつの記録</summary><div class="tally" id="rTally"></div></details>
+  <details class="rlog"><summary>大人向け：1回ずつの記録</summary><div class="tally" id="rTally"></div></details>
   <div class="rbtns">
     <button class="bigbtn" id="againBtn">もういちど あそぶ</button>
     <button class="bigbtn alt" id="rSetBtn">あそび・むずかしさ を かえる</button>
@@ -822,7 +822,7 @@
 <!-- 設定 -->
 <div id="settings">
   <div class="sheet">
-    <h2>⚙️ 先生の設定</h2>
+    <h2>⚙️ 大人の設定</h2>
     <p class="note-pause">※ この画面を開いている間、遊びは止まっています</p>
 
     <div class="item">
@@ -946,7 +946,7 @@
       </div>
       <ul class="gtips">
         <li>🏠 途中でやめたいときは、遊びの画面の<b>左上の家のボタン</b>ですぐ戻れます</li>
-        <li>⚙️ 音量・回数・判定・手の届く範囲は、右上の<b>「先生の設定」</b>で変えられます</li>
+        <li>⚙️ 音量・回数・判定・手の届く範囲は、右上の<b>「大人の設定」</b>で変えられます</li>
         <li>👆 「カメラなしであそぶ」を選ぶと、画面のタッチで遊べます（説明やデモに便利です）</li>
       </ul>
     </div>
@@ -2826,7 +2826,7 @@ function drawFruits(){
 const XMODES = ['yura','pita','fuse','shabon','mogura','awa','fuki','cho','kake','beam','reach'];
 const isX = m => XMODES.indexOf(m||SET.mode) >= 0;
 
-/* 【先生へ】むずかしさ ごと の ちょうせい。すうじ を かえると やさしく／むずかしく なる。
+/* 【大人へ】むずかしさ ごと の ちょうせい。すうじ を かえると やさしく／むずかしく なる。
    y…ふね：yFull＝かた の かたむき(ど)、yShift＝よこ への いどう(かたはば比)、yHold＝☆で とまる びょう、ySec＝せいげん びょう
    p…ピタッ：pThr＝「とまった」と みなす うごき の おおきさ(からだ比)、pNeed＝とまる びょう、pWin＝ちょうせん できる びょう
    f…ふうせん：fTop＝てを あげる たかさ(0～1)、fRate＝ふくらむ はやさ、fFast＝「はやすぎ」の はやさ、fSec＝せいげん びょう
@@ -5334,7 +5334,7 @@ function beamDraw(){
     ctx.fillStyle=`rgba(${BM_COL[sd].zone},${pul})`; ctx.fillRect(0,y0,CW,sd==='up'?midY:CH-midY);
   }
   ctx.setLineDash([18,12]); ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,midY); ctx.lineTo(CW,midY); ctx.stroke(); ctx.setLineDash([]);
-  // カメラ の こども（ひだり した・せんせい の かくにん よう）
+  // カメラ の こども（ひだり した・おとな の かくにん よう）
   const W=bmWipe();
   if(G.judgeOn && video.readyState>=2){
     ctx.save(); rrPath(ctx,W.x,W.y,W.w,W.h,14); ctx.clip();
@@ -7279,7 +7279,7 @@ function paintLevels(){
     try{ $('#cPic').innerHTML = svgImgTag(VSCENE(SET.mode)); }catch(e){}
     $('#cName').textContent = (MODES[SET.mode]||{}).name||'';
   }
-  $('#roundInfo').textContent = SET.rounds+'回 あそびます（回数は ⚙️先生の設定 で変えられます）';
+  $('#roundInfo').textContent = SET.rounds+'回 あそびます（回数は ⚙️大人の設定 で変えられます）';
   const mim = SET.mode==='mimic';
   $('#mimicTools').style.display = mim ? '' : 'none';
   $('#orderCol').style.display = mim ? '' : 'none';
@@ -7420,7 +7420,7 @@ $('#tSetBtn').addEventListener('click', openSettings);
 $('#rSetBtn').addEventListener('click', ()=>showStep(2));
 showStep(1);
 
-/* 遊びの説明（先生向けは漢字、子ども向けの一文は ひらがな） */
+/* 遊びの説明（大人向けは漢字、子ども向けの一文は ひらがな） */
 const MODE_INFO = {
   beam:{ sit:1, stand:1, aim:'見て判断して動く反応（視覚・聴覚の合図への反応）、上下方向への体幹の動き', part:'頭と肩の上下（しゃがむ／頭を下げる）、手首（両手を上げる）',
          lv:'やさしい：予告とビームが長く、小さな動きでOK ／ むずかしい：短く、大きな動きが必要', say:'「あかい ひかりは うえ！ しゃがめ！」「あおい ひかりは した！ ジャンプ！」',
@@ -7481,9 +7481,9 @@ const QA=[
  ['カメラが映らない／「許可」の確認が出ない','iPadの「設定」→「Safari」→「カメラ」を「許可」にしてください。または、Safariのアドレス欄の「ぁあ」→「Webサイトの設定」→「カメラ」→「許可」。ほかのアプリ（カメラ・FaceTimeなど）を閉じてから開き直すと直ることもあります。'],
  ['毎回カメラの許可を聞かれる','上の設定で「許可」にすると聞かれなくなります。iPadのEdgeでは設定が記憶されないことがあるため、Safariでの利用をおすすめします。'],
  ['体を見つけてくれない／反応がにぶい','iPadから1〜2m離れ、おへそから上（顔・肩・両手）が映るようにしてください。窓を背にした逆光は苦手です。部屋を明るくすると反応がよくなります。始める前の「うつりチェック」で確認できます。'],
- ['判定がきびしい／ゆるい','まず「むずかしさ」を変えてみてください。さらに細かく調整したいときは、⚙️先生の設定 →「判定のきびしさ」で、ゆるめ・ふつう・きびしめ を選べます。'],
- ['手が届かない所に出てくる','⚙️先生の設定 →「手の届く範囲」で「測る」を押し、15秒ほど手を大きく動かしてください。以後、その範囲の中にだけ出てきます（フルーツキャッチ・シャボンだま・もぐら・あわあわ・まどふき）。'],
- ['音や声が出ない','iPad本体の音量と、消音（サイレント）になっていないかを確認してください。⚙️先生の設定で、効果音・BGM・声の案内の大きさやオン／オフを変えられます。画面を一度タッチすると鳴り始めることもあります。'],
+ ['判定がきびしい／ゆるい','まず「むずかしさ」を変えてみてください。さらに細かく調整したいときは、⚙️大人の設定 →「判定のきびしさ」で、ゆるめ・ふつう・きびしめ を選べます。'],
+ ['手が届かない所に出てくる','⚙️大人の設定 →「手の届く範囲」で「測る」を押し、15秒ほど手を大きく動かしてください。以後、その範囲の中にだけ出てきます（フルーツキャッチ・シャボンだま・もぐら・あわあわ・まどふき）。'],
+ ['音や声が出ない','iPad本体の音量と、消音（サイレント）になっていないかを確認してください。⚙️大人の設定で、効果音・BGM・声の案内の大きさやオン／オフを変えられます。画面を一度タッチすると鳴り始めることもあります。'],
  ['途中でやめたい／記録を見たい','遊びの画面の左上の家のボタンで、すぐ最初の画面に戻れます。それまでの記録を見たいときは、右上の⚙️ →「おしまい」を押すと結果画面が出ます。'],
  ['カメラなしでも使える？','「カメラなしであそぶ」を選ぶと、画面をタッチしたり指でなぞったりして遊べます。授業の導入で遊び方を見せるときに便利です。'],
  ['映像はどこかに送られる？','映像はiPadの中だけで処理され、外部には送信・保存されません。']
