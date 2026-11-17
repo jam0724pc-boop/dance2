@@ -620,6 +620,7 @@
   @keyframes ipop{ 0%{ transform:scale(.6); opacity:0; } 100%{ transform:scale(1); opacity:1; } }
   #resultScreen .rhead{ font-size:clamp(40px,6.6vw,64px); font-weight:900; margin:0; }
   .rslots{ display:grid; grid-template-columns:repeat(var(--cols,5), clamp(52px,8.6vw,104px)); gap:clamp(8px,1.4vw,16px); justify-content:center; margin:6px 0; }
+  .rpct{ display:inline-block; margin-left:.4em; padding:.05em .55em; border-radius:999px; background:#ffd34d; color:#2b2340; font-weight:900; font-size:1.15em; vertical-align:middle; }
   .rslot{ aspect-ratio:1; border-radius:26%; border:4px dashed #e3c98f; background:rgba(255,255,255,.7); position:relative; }
   .rslot.on{ border-color:transparent; background:transparent; }
   .rslot img{ position:absolute; inset:-6%; width:112%; height:112%; animation:starIn .5s cubic-bezier(.2,1.8,.4,1) both; }
@@ -750,7 +751,7 @@
   <div class="faces" id="rFace" style="display:none">🎉</div>
   <h1 class="rhead" id="rTitle">よく がんばりました！</h1>
   <div class="rslots" id="rStars"></div>
-  <p class="rscore"><span id="rTotal">10</span>かい ちゅう <b id="rNum">0</b>かい できたよ！</p>
+  <p class="rscore"><span id="rTotal">10</span>かい ちゅう <b id="rNum">0</b>かい できたよ！ <span class="rpct" id="rPct">0%</span></p>
   <p class="sub" id="rMsg"></p>
   <details class="rlog"><summary>大人向け：1回ずつの記録</summary><div class="tally" id="rTally"></div></details>
   <div class="rbtns">
@@ -7682,15 +7683,19 @@ function showSummary(){
   $('#rTotal').textContent = total;
 
   // ★ の マス：できた ぶん だけ、ほし が 1つ ずつ「ポン」と はいる
-  const box=$('#rStars'); const NS=G.log.length||total;
-  box.style.setProperty('--cols', Math.min(NS<=5?NS:Math.ceil(NS/2), 10));
+  // ほし は いつも 5つ。できた わりあい の ぶん だけ はいる（すこし でも できたら 1つ は はいる）
+  const box=$('#rStars'); const NS=5;
+  const pct = total ? Math.round(n/total*100) : 0;
+  const nStar = n<=0 ? 0 : Math.max(1, Math.min(5, Math.round(n/total*5)));
+  box.style.setProperty('--cols', NS);
   box.innerHTML = Array.from({length:NS},()=>'<div class="rslot"></div>').join('');
   const SC=['#ffd34d','#ff9fc0','#8fd3ff','#9be0b0','#ffb877','#c9b2ff'];
-  const okIdx=[]; G.log.forEach((r,i)=>{ if(r.ok) okIdx.push(i); });
+  const okIdx=Array.from({length:nStar},(_,i)=>i);
+  $('#rPct').textContent = pct+'%';
   clearTimeout(showSummary._t); (showSummary._ts||[]).forEach(clearTimeout); showSummary._ts=[];
-  const ratio0 = total ? okIdx.length/total : 0;
+  const ratio0 = total ? n/total : 0;
   setTimeout(()=>rfxStart(okIdx, ratio0>=0.4?'good':'low'), 30);
-  const gapS=Math.max(220, Math.min(380, 3000/Math.max(1,okIdx.length)));
+  const gapS=420;
   okIdx.forEach((i,j)=>{
     showSummary._ts.push(setTimeout(()=>{
       const el=box.children[j]; if(!el) return;
