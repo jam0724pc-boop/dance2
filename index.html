@@ -850,8 +850,9 @@
     <div class="item">
       <label>回数</label>
       <div class="seg" id="segRounds">
-        <button data-v="5">5回</button><button data-v="10">10回</button><button data-v="20">20回</button>
+        <button data-v="few">少なめ</button><button data-v="rec">おすすめ</button><button data-v="many">多め</button>
       </div>
+      <small class="hint" id="roundsHint"></small>
     </div>
 
     <div class="item">
@@ -1080,6 +1081,33 @@ function refreshTol(){
 refreshTol();
 function saveSet(){ try{ const o=Object.assign({},SET); if(o.mode==='reach') o.mode=(typeof REACH_BACK!=='undefined'?REACH_BACK:'yura'); localStorage.setItem(SAVE_KEY, JSON.stringify(o)); }catch(e){} }
 // むずかしさ を えらぶと、かんれんする せってい が まとめて かわる
+/* ---- あそび ごと・むずかしさ ごと の 回数 ----
+   n：おすすめ の 回数（やさしい・ふつう・むずかしい）／s：1回 に かかる びょう の めやす（おなじ じゅん）
+   ねらい：1人 1回 の ばん が「おすすめ」で 約2分（はげしい あそび は すこし みじかめ）。
+   少なめ ＝ おすすめ の 半分（約1分）、多め ＝ おすすめ の 1.5ばい（約3分）。 */
+const ROUND_PLAN = {
+  kake  :{ n:[10,10,8],  s:[9,11,13] },     // 1回＝どうぶつ 1ぴき を ぬかす
+  beam  :{ n:[15,20,25], s:[7,5.5,4.5] },   // 1回＝ビーム 1ぱつ
+  daru  :{ n:[4,3,3],    s:[33,43,58] },    // 1回＝だるまさん に タッチ する まで（「だるまさんが ころんだ」5〜8かい）
+  yura  :{ n:[20,15,15], s:[5.7,6.7,7.7] }, // 1回＝ほし へ 1かい かたむける
+  pita  :{ n:[15,12,12], s:[9.5,10.7,11.8] },// 1回＝おどって → ピタッ
+  fuse  :{ n:[10,10,10], s:[10.5,11.5,12.5] },// 1回＝ふうせん 1こ
+  catch :{ n:[40,50,60], s:[2.6,1.9,1.3] }, // 1回＝フルーツ 1こ
+  shabon:{ n:[40,60,70], s:[2.4,1.7,1.1] }, // 1回＝シャボンだま 1こ
+  mogura:{ n:[25,30,40], s:[4,3.1,2.4] },   // 1回＝もぐら 1ぴき
+  awa   :{ n:[20,25,25], s:[4.4,4.4,4.1] }, // 1回＝ばいきん 1ぴき
+  fuki  :{ n:[12,12,10], s:[11.2,12.2,13.2] },// 1回＝まど 1まい
+  cho   :{ n:[12,10,8],  s:[10,12,14] }      // 1回＝おはな 1つ
+};
+function roundPlan(m, lv, pick){
+  const P=ROUND_PLAN[m]; if(!P) return null;
+  const i={easy:0,normal:1,hard:2}[lv]; const k = i===undefined ? 1 : i;
+  const r=P.n[k], nice=(x)=> x>=10 ? Math.round(x/5)*5 : Math.round(x);
+  const n = pick==='few' ? Math.max(2,nice(r*0.5)) : pick==='many' ? (r<=4 ? r+1 : nice(r*1.5)) : r;
+  return { n, sec:n*P.s[k] };
+}
+function fmtMin(sec){ const h=Math.round(sec/30)/2; if(h<1) return '約1分'; return '約'+Math.floor(h)+'分'+(h%1?'半':''); }
+function planRounds(){ const p=roundPlan(SET.mode, SET.level, SET.roundsPick||'rec'); if(p) SET.rounds=p.n; return p; }
 function applyLevel(k){
   const L = LEVELS[k]; if(!L) return;
   SET.level=k; SET.tolBase=L.tol; SET.waitBeats=L.waitBeats; SET.bpm=L.bpm;
@@ -7432,6 +7460,7 @@ function beginGame(withCamera){
   box.style.setProperty('--ib', INTRO_BG[m]||'#cfe6f7');
   box.classList.remove('hidden');
   initAudio(); if(ac && ac.state==='suspended'){ try{ ac.resume(); }catch(e){} }
+  planRounds();
   const total = (progList() ? progList().length : SET.rounds);
   speak(total+'かい、がんばろう！ '+((START_SAY_ALL[m])||''), 1.0, 1.25);
   const cnt=$('#introCnt'); let n=3;
@@ -7452,7 +7481,7 @@ async function beginGameNow(withCamera, noSay){
   G.judgeOn = lastWithCamera;
   G.running = true; G.stars=0; G.combo=0; G.plays=0; G.log=[]; G.bag=null;
   G.prog = progList(); G.prog = G.prog ? G.prog.slice() : null;   // とちゅう で かえても この かい は そのまま
-  G.total = G.prog ? G.prog.length : SET.rounds;
+  planRounds(); G.total = G.prog ? G.prog.length : SET.rounds;
   G.mood='normal'; G.result=null; G.phase='ready';
   clearPause(); setKeep(false); $('#settings').classList.remove('open');
   elBig.classList.remove('show'); elBig.textContent=''; clearChant(); setDots(0,0);
@@ -7855,7 +7884,12 @@ function paintLevels(){
     try{ $('#cPic').innerHTML = svgImgTag(VSCENE(SET.mode)); }catch(e){}
     $('#cName').textContent = (MODES[SET.mode]||{}).name||'';
   }
-  $('#roundInfo').textContent = SET.rounds+'回 あそびます（回数は ⚙️大人の設定 で変えられます）';
+  const _rp = planRounds();
+  $('#roundInfo').textContent = _rp ? SET.rounds+'回 あそびます（'+fmtMin(_rp.sec)+'・回数は ⚙️大人の設定 で「少なめ／おすすめ／多め」を えらべます）'
+                                    : SET.rounds+'回 あそびます（回数は ⚙️大人の設定 で変えられます）';
+  const _rh=document.getElementById('roundsHint');
+  if(_rh){ const f=roundPlan(SET.mode,SET.level,'few'), r=roundPlan(SET.mode,SET.level,'rec'), mn=roundPlan(SET.mode,SET.level,'many');
+    _rh.textContent = r ? '「'+((MODES[SET.mode]||{}).name||'')+'」（'+((LEVELS[SET.level]||{}).label||'ふつう').replace(/^\S+\s/,'')+'）：少なめ '+f.n+'回（'+fmtMin(f.sec)+'）／おすすめ '+r.n+'回（'+fmtMin(r.sec)+'）／多め '+mn.n+'回（'+fmtMin(mn.sec)+'）。遊びとむずかしさに合わせて回数が自動で変わります。' : ''; }
   const mim = SET.mode==='mimic';
   $('#mimicTools').style.display = mim ? '' : 'none';
   $('#orderCol').style.display = mim ? '' : 'none';
@@ -8196,7 +8230,8 @@ function segInit(sel, key, cast, isLevelPart){
   segPaint.push(paint); paint();
 }
 segInit('#segWait','waitBeats', v=>parseInt(v,10), true);
-segInit('#segRounds','rounds', v=>parseInt(v,10), false);
+if(!['few','rec','many'].includes(SET.roundsPick)) SET.roundsPick='rec';
+segInit('#segRounds','roundsPick', v=>String(v), false);
 
 // せってい がめん の むずかしさ ボタン
 const elSegLevel=$('#segLevel');
