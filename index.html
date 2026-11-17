@@ -925,6 +925,13 @@
       <p class="rmsg" id="reachMsg"></p>
     </div>
 
+    <div class="item wide" id="camRow" style="display:none">
+      <label>使うカメラ</label>
+      <div class="seg">
+        <select id="camSel" style="font:inherit;font-weight:700;font-size:1em;padding:10px 12px;border-radius:12px;border:2px solid #d9d2c3;background:#fff;max-width:100%"></select>
+      </div>
+      <small class="hint">パソコンにUSBカメラをつないだときなど、カメラが2つ以上あるときに選べます（一度カメラで始めると一覧が出ます）</small>
+    </div>
     <div class="item wide">
       <label>声の種類</label>
       <div class="seg">
@@ -1066,6 +1073,7 @@ try{ document.fonts && ['700','900'].forEach(w=>document.fonts.load(w+' 20px Zen
    ========================================================================= */
 const CONFIG = {
   poseCDN : 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/',
+  poseCDNs: ['https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/', 'https://unpkg.com/@mediapipe/pose@0.5.1675469404/'],   // 1つめ が つながらない ときは 2つめ
   camCDN  : 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js',
   defaults: {
     vol:80, bgm:60, bpm:100, waitBeats:8, tol:1.5, level:'normal', rounds:10,
@@ -1103,6 +1111,7 @@ const TOUCH_KINDS = {
   hand:{ emoji:'✋', name:'て',  color:'#e8487a', say:'て！',   lm:[15,16] },
   foot:{ emoji:'🦶', name:'あし', color:'#2f7fe0', say:'あし！', lm:[27,28] }
 };
+const IS_WIN = /Windows/i.test(navigator.userAgent||'');   // Windows の パソコン（Edge など）
 const SAVE_KEY = 'karada-monitor-v1';
 let SET = Object.assign({}, CONFIG.defaults);
 try{
@@ -1235,6 +1244,7 @@ const SFX = {
    3. 音声ガイド（Web Speech API：音声合成）
    ========================================================================= */
 let jaVoice=null, speechReady=false;
+const VOICE_BAD = new Set();     // つかえなかった こえ（Edge の オンライン の こえ が ネット で とめられた とき など）
 /* こえ を えらぶ：その きかい に ある にほんご の こえ の なかで、いちばん しぜん な もの。
    ・「拡張／プレミアム／Enhanced／Natural」の こえ を ゆうせん
    ・きかい っぽい こえ（Eloquence：Eddy・Flo など）は さける */
@@ -1243,7 +1253,7 @@ function voiceScore(v){
   let sc=0;
   if(/premium|プレミアム/i.test(n)) sc+=60;
   if(/enhanced|拡張|高品質/i.test(n)) sc+=50;
-  if(/natural|neural|online/i.test(n)) sc+=45;
+  if(/natural|neural|online/i.test(n)) sc += (navigator.onLine===false ? -80 : 45);   // ネット が ない ときは オンライン の こえ は つかわない
   if(/siri/i.test(n)) sc+=40;
   if(/kyoko|o-?ren|nanami|google/i.test(n)) sc+=20;
   if(/otoya|hattori|keita/i.test(n)) sc+=10;
@@ -1254,7 +1264,7 @@ function voiceScore(v){
 }
 function loadVoices(){
   if(!('speechSynthesis' in window)) return;
-  const vs = speechSynthesis.getVoices().filter(v=>/^ja/i.test(v.lang));
+  const vs = speechSynthesis.getVoices().filter(v=>/^ja/i.test(v.lang) && !VOICE_BAD.has(v.name));
   vs.sort((a,b)=>voiceScore(b)-voiceScore(a));
   jaVoice = vs.find(v=>v.name===SET.voiceName) || vs[0] || null;
   const sel=document.getElementById('voiceSel');
@@ -1270,13 +1280,15 @@ function loadVoices(){
     hint.innerHTML = !vs.length ? 'この機械には日本語の声が見つかりません。'
       : good ? '✅ 高品質の声を使っています（'+jaVoice.name.replace(/</g,'&lt;')+'）'
       : (best ? '⚠️ いま選んでいる声より自然な声があります。「おまかせ」にすると高品質の声になります。<br>' : '⚠️ いまは標準の声です。')
-        + '<b>もっと自然にするには</b>：iPadの「設定」→「アクセシビリティ」→「読み上げコンテンツ」→「声」→「日本語」で、名前に「拡張」や「プレミアム」が付いた声（Kyoko・O-renなど）をダウンロードし、このアプリを開き直してください（一度だけ・Wi-Fiで）。Macは「システム設定」→「アクセシビリティ」→「読み上げコンテンツ」→「システムの声」→「声を管理」から入れられます。';
+        + (IS_WIN ? '<b>もっと自然にするには</b>：Edgeで開き、インターネットにつながっていると「Microsoft Nanami Online (Natural)」などの自然な声が自動で選ばれます。ネットにつながらないときは、パソコンに入っている声（Haruka など）に自動で切りかわります。' : '')
+        + (IS_WIN ? '' : '<b>もっと自然にするには</b>：iPadの「設定」→「アクセシビリティ」→「読み上げコンテンツ」→「声」→「日本語」で、名前に「拡張」や「プレミアム」が付いた声（Kyoko・O-renなど）をダウンロードし、このアプリを開き直してください（一度だけ・Wi-Fiで）。Macは「システム設定」→「アクセシビリティ」→「読み上げコンテンツ」→「システムの声」→「声を管理」から入れられます。');
   }
 }
 if('speechSynthesis' in window){
   loadVoices();
   speechSynthesis.onvoiceschanged = loadVoices;
-  [400,1500,3500].forEach(ms=>setTimeout(loadVoices, ms));   // iPad では こえ の いちらん が おくれて とどく ことが ある
+  [400,1500,3500].forEach(ms=>setTimeout(loadVoices, ms));
+  window.addEventListener('online', loadVoices); window.addEventListener('offline', loadVoices);   // iPad では こえ の いちらん が おくれて とどく ことが ある
 }
 /* よみあげ よう の ことば に なおす。
    がめん の もじ は「わかちがき の ひらがな」だが、その まま よむ と
@@ -1316,16 +1328,24 @@ function sayText(text){
     return w.replace(/(\d+)かい/g,'$1回');
   }).join('').replace(/！/g,'。').replace(/。+$/,'');
 }
-function speak(text, rate=1.0, pitch=1.0){
+function speak(text, rate=1.0, pitch=1.0, _retry){
   if(!SET.voice || !('speechSynthesis' in window)) return;
   try{
+    const busy = speechSynthesis.speaking || speechSynthesis.pending;
     speechSynthesis.cancel();
+    if(busy && !_retry){ clearTimeout(speak._d); speak._d=setTimeout(()=>speak(text,rate,pitch,1), 70); return; }   // Edge/Chrome：とめた すぐ あと は とりこぼす ことが ある
     const u = new SpeechSynthesisUtterance(sayText(text));
     // たかすぎる こえ・はやすぎる こえ は きかい っぽく きこえる ので、しぜん な はんい に おさえる
     u.lang='ja-JP'; u.rate=clamp(rate*0.95, 0.85, 1.0); u.pitch=clamp(1+(pitch-1)*0.15, 1.0, 1.06);
     u.volume = clamp(SET.vol/100,0,1);
     if(jaVoice) u.voice = jaVoice;
-    u.onstart=()=>bgmDuck(true); u.onend=u.onerror=()=>bgmDuck(false);
+    u.onstart=()=>bgmDuck(true); u.onend=()=>bgmDuck(false);
+    u.onerror=(ev)=>{ bgmDuck(false);
+      const er=ev && ev.error;
+      if(er && er!=='interrupted' && er!=='canceled' && u.voice && !VOICE_BAD.has(u.voice.name)){
+        VOICE_BAD.add(u.voice.name); loadVoices();                         // つかえなかった こえ は はずして、もう いちど
+        if(_retry!==2) setTimeout(()=>speak(text,rate,pitch,2), 50);
+      } };
     clearTimeout(speak._t); speak._t=setTimeout(()=>bgmDuck(false), 6000);
     speechSynthesis.speak(u);
   }catch(e){}
@@ -2064,8 +2084,8 @@ const video = $('#cam');
 let CW=0, CH=0, DPR=1;
 function resize(){
   const oW=CW, oH=CH;
-  DPR = Math.min(window.devicePixelRatio||1, 2);
   CW = cv.clientWidth; CH = cv.clientHeight;
+  DPR = Math.max(1, Math.min(window.devicePixelRatio||1, 2, Math.sqrt(4.2e6/Math.max(1,CW*CH))));
   cv.width = Math.round(CW*DPR); cv.height = Math.round(CH*DPR);
   ctx.setTransform(DPR,0,0,DPR,0,0);
   // がめん の むき が かわったら、でている まと／フルーツ を わりあい で うつしかえる
@@ -7292,6 +7312,10 @@ function vignette(){
 let lastT = now();
 function frame(){
   requestAnimationFrame(frame);
+  try{ frameBody(); }
+  catch(e){ if(!frame._e){ frame._e=1; console.error(e); setTimeout(()=>{ frame._e=0; },3000); } try{ ctx.setTransform(DPR,0,0,DPR,0,0); ctx.globalAlpha=1; }catch(_){} }
+}
+function frameBody(){
   const t=now(); const dt=Math.min(0.05, t-lastT); lastT=t;
   if(CW!==cv.clientWidth || CH!==cv.clientHeight) resize();
 
@@ -7453,15 +7477,48 @@ async function openCamera(){
   if(camLive()){ if(video.srcObject!==camStream) video.srcObject=camStream; try{ await video.play(); }catch(e){} return; }
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
     throw Object.assign(new Error('no-gum'), {name:'NotSupportedError'});
-  camStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user', width:{ideal:640}, height:{ideal:480} }, audio:false });
+  const vc = { width:{ideal:640}, height:{ideal:480} };
+  if(SET.camId) vc.deviceId = { exact:SET.camId }; else vc.facingMode = 'user';
+  try{ camStream = await navigator.mediaDevices.getUserMedia({ video:vc, audio:false }); }
+  catch(e){
+    if(SET.camId && (e.name==='OverconstrainedError' || e.name==='NotFoundError' || e.name==='NotReadableError')){   // えらんだ カメラ が ない ときは ふつう の カメラ で
+      SET.camId=''; saveSet();
+      camStream = await navigator.mediaDevices.getUserMedia({ video:{ width:{ideal:640}, height:{ideal:480} }, audio:false });
+    } else throw e;
+  }
+  setTimeout(listCameras, 300);
   video.muted=true; video.setAttribute('playsinline',''); video.srcObject=camStream;
   try{ await video.play(); }catch(e){}
   camStream.getVideoTracks().forEach(t=>t.addEventListener('ended',()=>{ G.ready=false; paintCamReady(); }));
 }
+// つながって いる カメラ の いちらん（Windows の パソコン に USB カメラ を つないだ とき など）
+async function listCameras(){
+  const sel=document.getElementById('camSel'); if(!sel || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  try{
+    const ds=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+    const cur = camStream && camStream.getVideoTracks()[0] ? (camStream.getVideoTracks()[0].getSettings().deviceId||'') : '';
+    sel.innerHTML='<option value="">おまかせ</option>'+ds.map((d,i)=>`<option value="${d.deviceId}">${(d.label||('カメラ '+(i+1))).replace(/</g,'&lt;')}</option>`).join('');
+    sel.value = ds.some(d=>d.deviceId===SET.camId) ? SET.camId : '';
+    const box=document.getElementById('camRow'); if(box) box.style.display = ds.length>1 || SET.camId ? '' : 'none';
+    sel.title = cur;
+  }catch(e){}
+}
+async function switchCamera(id){
+  SET.camId=id||''; saveSet();
+  if(!camStream) return;
+  try{ camStream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  camStream=null;
+  try{ await openCamera(); }catch(e){ console.warn(e); notice && notice('カメラを開けませんでした。おまかせ に もどします'); SET.camId=''; saveSet(); try{ await openCamera(); }catch(_){ } }
+}
 async function loadPose(){
   if(mpPose) return;
-  if(!window.Pose) await loadScript(CONFIG.poseCDN+'pose.js');
-  if(!window.Pose) throw new Error('library missing');
+  if(!window.Pose){
+    let lastErr=null;
+    for(const cdn of (CONFIG.poseCDNs||[CONFIG.poseCDN])){
+      try{ await loadScript(cdn+'pose.js', 15000); if(window.Pose){ CONFIG.poseCDN=cdn; break; } }catch(e){ lastErr=e; }
+    }
+    if(!window.Pose) throw (lastErr || new Error('library missing'));
+  }
   mpPose = new window.Pose({ locateFile:(f)=>CONFIG.poseCDN+f });
   mpPose.setOptions({
     modelComplexity:0,          // iPad でも かるく うごく ライト モデル
@@ -7525,16 +7582,18 @@ async function startCameraMode(){
       fallback('この画面の中ではカメラが使えません',
         'GitHubで公開したアドレスを、iPadのSafariで直接開いてください。今は「カメラなし」でも遊べます');
     }else if(n==='NotAllowedError' || n==='SecurityError'){
-      fallback('カメラの許可がありません',
-        'iPadの「設定」→「Safari」→「カメラ」を「許可」にすると使えます。今は「カメラなし」でも遊べます');
+      fallback('カメラの許可がありません', IS_WIN
+        ? 'アドレスバー左のマーク（🔒 や ⓘ）→「カメラ」を「許可」にして、ページを再読み込み（F5）してください。だめなときは Windowsの「設定」→「プライバシーとセキュリティ」→「カメラ」で、カメラへのアクセスと「デスクトップアプリ」をオンにしてください。今は「カメラなし」でも遊べます'
+        : 'iPadの「設定」→「Safari」→「カメラ」を「許可」にすると使えます。今は「カメラなし」でも遊べます');
     }else if(n==='NotFoundError' || n==='OverconstrainedError'){
-      fallback('カメラが見つかりません', 'カメラの付いた端末で開いてください');
-    }else if(n==='NotReadableError'){
-      fallback('カメラが使えません', 'ほかのアプリやタブでカメラを使っていたら閉じてください');
+      fallback('カメラが見つかりません', IS_WIN ? 'USBカメラは差し直してから、ページを再読み込み（F5）してください' : 'カメラの付いた端末で開いてください');
+    }else if(n==='NotReadableError' || n==='AbortError'){
+      fallback('カメラが使えません', IS_WIN ? 'Teams・Zoom・カメラアプリ、ほかのタブなどでカメラを使っていたら閉じてから、再読み込み（F5）してください'
+                                            : 'ほかのアプリやタブでカメラを使っていたら閉じてください');
     }else if(n==='NotSupportedError' || !window.isSecureContext){
       fallback('この開き方ではカメラが使えません', 'httpsのアドレス（GitHub Pagesなど）で開いてください');
     }else{
-      fallback('うまく始められませんでした', 'ネットワークにつながっているか確かめてください');
+      fallback('うまく始められませんでした', IS_WIN ? 'インターネットにつながっているか確かめてください（学校のネットワークで止められている場合は、情報担当の先生に「cdn.jsdelivr.net」と「unpkg.com」を使えるか確認してください）' : 'ネットワークにつながっているか確かめてください');
     }
   }
 }
@@ -8698,6 +8757,12 @@ $('#openBuilder').addEventListener('click', openBuilder);
 $('#setZukan').addEventListener('click', openZukan);
 $('#setBuilder').addEventListener('click', openBuilder);
 paintLevels();
+</script>
+<script>
+(function(){ const sel=document.getElementById('camSel'); if(sel) sel.addEventListener('change',()=>switchCamera(sel.value));
+  if(navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange',()=>listCameras());
+  window.addEventListener('unhandledrejection',e=>{ console.warn('unhandled',e.reason); e.preventDefault(); });
+})();
 </script>
 </body>
 </html>
